@@ -119,7 +119,7 @@ For evaluation, we sampled 60 images using a fixed random seed (42) to ensure re
 
 \subsection{Model Architecture}
 
-We selected YOLO11s (small variant) as our base architecture, balancing model capacity with inference efficiency. Table~\ref{tab:architecture} details the model specifications.
+We selected YOLO11s (small variant) as our base architecture for fine-tuning. The choice of the ``s'' variant over the more compact ``n'' (nano) variant was deliberate: with 9.4 million parameters compared to approximately 2.6 million for YOLO11n, the small variant provides substantially greater model capacity to capture the diversity of vessel appearances in Bosphorus imagery. This diversity encompasses multiple vessel types (cargo ships, tankers, ferries, fishing boats), a wide range of scales (from nearby ferries to distant cargo ships), and varying orientations and lighting conditions. As our experimental results confirm (Table~\ref{tab:results}), even the vanilla YOLO11s outperforms YOLO11n (10.90\% vs 2.18\% recall), suggesting that the additional capacity is beneficial for this domain. Table~\ref{tab:architecture} details the model specifications.
 
 \begin{table}[!ht]
 \centering
@@ -157,7 +157,7 @@ Input resolution & 1088$\times$1088 & Optimized for 1080p source \\
 Batch size & 17 & Auto-computed at 58\% GPU \\
 Epochs & 50 & All completed \\
 Optimizer & AdamW & momentum=0.937 \\
-Learning rate & 0.001 $\rightarrow$ 0.01 & Cosine annealing \\
+Learning rate & lr0=0.001, lrf=0.01 & Cosine decay to lr0$\times$lrf \\
 Weight decay & 0.0005 & L2 regularization \\
 Warmup epochs & 3 & warmup\_bias\_lr=0.1 \\
 Early stopping & patience=10 & Not triggered \\
@@ -168,11 +168,11 @@ Image caching & RAM & 1.1 GB train, 0.4 GB valid \\
 \end{tabular}
 \end{table}
 
-The input resolution of 1088$\times$1088 was selected to optimize detection of small and distant vessels while maintaining efficient inference. This resolution represents 2.89$\times$ more pixels than the standard 640$\times$640 YOLO input, improving small object detection at the cost of increased computation.
+The input resolution of 1088$\times$1088 was carefully selected based on both architectural constraints and source imagery characteristics. YOLO architectures require input dimensions divisible by 32 due to five successive downsampling stages with stride 2 in the backbone network ($2^5 = 32$). Our source imagery is 1920$\times$1080 (Full HD), and 1080 is not divisible by 32. The nearest compliant value is 1088 ($1088 = 34 \times 32$), which minimizes aspect ratio distortion compared to the default 640$\times$640 while preserving substantially more spatial detail. This resolution represents 2.89$\times$ more pixels than the standard 640$\times$640 YOLO input, significantly improving detection of small and distant vessels at the cost of modestly increased computation.
 
 Data augmentation included mosaic augmentation (combining four training images), random horizontal flipping (50\% probability), HSV color space adjustments (hue$\pm$0.015, saturation$\pm$0.7, value$\pm$0.4), and albumentations transforms (blur, median blur, grayscale conversion, CLAHE). Mosaic augmentation was disabled for the final 10 epochs to fine-tune on full-resolution images.
 
-Training completed in 0.207 hours (12.4 minutes) for 50 epochs. The model achieved best validation mAP50 of 0.840 and mAP50-95 of 0.627, with final validation precision of 0.788 and recall of 0.784.
+Training completed in 0.207 hours (12.4 minutes) for 50 epochs. The model achieved best validation mAP50 of 0.840 and mAP50-95 of 0.627, with final validation precision of 0.788 and recall of 0.784. Note that validation metrics use Ultralytics' mAP-based evaluation with multiple IoU thresholds, while our test evaluation (Section~4) uses fixed IoU=0.5 matching, which accounts for slight differences in reported recall values.
 
 \subsection{Evaluation Framework}
 
@@ -274,7 +274,7 @@ Several patterns emerge from per-image analysis:
 
 \textbf{Case Study---Dense Scene:} Image \texttt{20250126\_151829} contains 20 ground truth vessels in a crowded maritime scene. Vanilla models detected 0--3 vessels (0--15\% recall). The fine-tuned model detected 12 vessels (60\% recall, 100\% precision), demonstrating capability in challenging dense scenarios while acknowledging room for improvement.
 
-\textbf{Case Study---Partial Detections:} The fine-tuned model's 71 false positives often represent partial vessel detections (detecting bow and stern separately) or reflections on water. In safety-critical applications, such over-detection is preferable to missed vessels.
+\textbf{Case Study---False Positive Analysis:} The fine-tuned model's 70 false positives arise from several identifiable sources in dense maritime scenes. \textit{Shore structures} constitute the dominant source of false positives: buildings, piers, and docks along the Bosphorus shoreline present rectangular shapes and high-contrast edges that resemble vessel superstructures. \textit{Overlapping vessels} in crowded scenes create ambiguous boundaries, causing the detector to segment partially visible vessels as separate objects. \textit{Large vessels spanning multiple scales} may trigger multiple detections when different parts of the ship (bow, bridge, stern) each match learned vessel features. \textit{Wake foam and water disturbances} present high-contrast white patterns against the dark water surface, occasionally mimicking small vessel signatures. In safety-critical maritime surveillance applications, such over-detection is generally preferable to missed vessels, as human operators can quickly dismiss false alarms while missed vessels pose genuine safety risks.
 
 \subsection{Performance Visualization}
 
@@ -312,7 +312,7 @@ The choice of 1088$\times$1088 input resolution represents a deliberate trade-of
 \begin{itemize}
     \item Preserves details of distant/small vessels that would otherwise be lost
     \item Maintains aspect ratio compatibility with 1920$\times$1080 source imagery
-    \item Incurs only modest speed penalty (20--30\% slower) due to efficient YOLO architecture
+    \item Incurs only modest speed penalty (approximately 7\% slower, 33.3ms vs 31ms) due to efficient YOLO architecture
     \item Enables detection of vessels at greater distances, critical for early warning in traffic management
 \end{itemize}
 
@@ -356,7 +356,7 @@ Key findings include:
 
 The practical implication is clear: practitioners deploying vessel detection for maritime surveillance must invest in domain-specific fine-tuning. Off-the-shelf pretrained models, despite including boat classes, cannot reliably detect vessels in specialized maritime environments.
 
-Future work will extend this research in several directions: multi-class vessel classification (cargo, tanker, ferry, fishing), night-time and thermal imaging adaptation, video-based tracking with temporal consistency, edge deployment optimization for embedded systems, and evaluation of generalization to other maritime corridors. Integration with AIS data for vessel identification verification presents an additional avenue for comprehensive maritime surveillance systems.
+Future work will extend this research in several directions: multi-class vessel classification (cargo, tanker, ferry, fishing), night-time and thermal imaging adaptation, video-based tracking with temporal consistency, edge deployment optimization for embedded systems, and evaluation of generalization to other maritime corridors. Additionally, systematic ablation studies would strengthen understanding of individual component contributions---particularly confidence threshold ablation to characterize the precision-recall trade-off curve, and input resolution ablation to quantify detection gains at intermediate resolutions (e.g., 640, 832, 1088) against computational cost. Integration with AIS data for vessel identification verification presents an additional avenue for comprehensive maritime surveillance systems.
 
 \begin{acknowledgements}
 The authors thank Üsküdar University for institutional support, Roboflow for dataset hosting and annotation tools, Google Colab for GPU compute resources (NVIDIA L4), and Ultralytics for the YOLO implementation. The bogaz\_v\_1 dataset is available under CC BY 4.0 license at \url{https://universe.roboflow.com/bosphorus-vision-project/bogaz_v_1-o9ldr}.
