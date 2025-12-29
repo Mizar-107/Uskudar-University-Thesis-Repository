@@ -1,0 +1,62 @@
+\documentclass[11pt]{letter}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{hyperref}
+
+\signature{Recep Ertu\u{g}rul Ek\c{s}i\\Corresponding Author}
+\address{Department of Computer Engineering\\
+\"{U}sk\"{u}dar University\\
+Istanbul, Turkey\\
+\texttt{recepertugrul.eksi@st.uskudar.edu.tr}}
+
+\begin{document}
+
+\begin{letter}{Editor-in-Chief\\
+SN Computer Science\\
+Springer Nature}
+
+\opening{Dear Editor,}
+
+We are pleased to submit our manuscript entitled \textbf{``Fine-tuned YOLO11 for Maritime Vessel Detection in the Bosphorus Strait: A Comparative Study''} for consideration for publication in \textit{SN Computer Science}.
+
+\textbf{Summary:} This paper presents a comprehensive evaluation of YOLO object detection models for maritime vessel detection in one of the world's busiest waterways---the Bosphorus Strait. Our key finding is that vanilla COCO-pretrained models fail catastrophically on this domain (achieving only 1--11\% recall), while domain-specific fine-tuning dramatically improves performance to 87.54\% recall with 80.06\% precision.
+
+\textbf{Key Contributions:}
+\begin{itemize}
+    \item First documented evaluation of YOLO11 models for Bosphorus maritime vessel detection
+    \item Demonstration that fine-tuning achieves an 8$\times$ improvement in recall over vanilla models
+    \item Comprehensive comparison of five model configurations on 321 vessel instances
+    \item Evidence that higher input resolution (1088$\times$1088) improves detection with minimal speed penalty, maintaining real-time capability at 30+ FPS
+\end{itemize}
+
+\textbf{Relevance to SN Computer Science:} This work addresses a practical computer vision challenge with significant real-world implications for maritime safety, traffic management, and environmental monitoring. The methodology and findings are relevant to researchers working on object detection, transfer learning, and domain adaptation in computer vision applications.
+
+\textbf{Declarations:}
+\begin{itemize}
+    \item This manuscript has not been published elsewhere and is not under consideration by another journal.
+    \item All authors have approved the manuscript and agree with its submission.
+    \item No funding was received for this research.
+    \item The authors declare no conflicts of interest.
+    \item The dataset used is publicly available under CC BY 4.0 license.
+    \item Code and trained models are available at: \url{https://github.com/Mizar-107/Uskudar-University-Thesis-Repository}
+\end{itemize}
+
+We believe this work will be of interest to the readership of \textit{SN Computer Science} and contributes valuable insights to the field of applied deep learning for maritime surveillance.
+
+Thank you for considering our submission. We look forward to your response.
+
+\closing{Sincerely,}
+
+\vspace{1cm}
+\textbf{Authors:}\\
+Recep Ertu\u{g}rul Ek\c{s}i (Corresponding Author)\\
+\textit{\"{U}sk\"{u}dar University, Istanbul, Turkey}\\
+\texttt{recepertugrul.eksi@st.uskudar.edu.tr}\\[0.5cm]
+Rowanda D. Ahmed\\
+\textit{\"{U}sk\"{u}dar University, Istanbul, Turkey}\\
+\texttt{rowanda.ahmed@uskudar.edu.tr}
+
+\end{letter}
+\end{document}

@@ -52,7 +52,7 @@
 ### Final Checks
 - [ ] Compile without errors (test with pdflatex)
 - [ ] Proofread converted document
-- [ ] Prepare cover letter
+- [x] Prepare cover letter (cover_letter.tex)
 - [ ] Identify suggested reviewers (3-5 recommended)
 
 ---
@@ -89,6 +89,7 @@
 Paper - Computer Science Journal/
 ├── main.tex                 (original - csagh template, kept as backup)
 ├── main_springer.tex        (NEW - Springer Nature submission)
+├── cover_letter.tex         (NEW - Cover letter for submission)
 ├── bibliography.bib         (10 references)
 ├── sn-jnl.cls              (Springer Nature class file v3.1)
 ├── sn-basic.bst            (Springer bibliography style)
