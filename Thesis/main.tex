@@ -1,0 +1,269 @@
+%% Thesis: Fine-tuned YOLO11 for Maritime Vessel Detection in the Bosphorus Strait
+%% Author: Recep Ertuğrul Ekşi
+%% Advisor: Rowanda D. Ahmed
+%% Institution: Üsküdar University, Istanbul
+%% Date: 2025
+
+\documentclass[12pt,a4paper,oneside]{report}
+
+%% ============================================================================
+%% PACKAGES
+%% ============================================================================
+
+% Encoding and fonts
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{times}  % Times New Roman font
+
+% Page layout
+\usepackage[left=3.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing  % 1.5 line spacing
+
+% Graphics and figures
+\usepackage{graphicx}
+\graphicspath{{../Paper - Computer Science Journal/figures/}{./figures/}}
+\usepackage{float}
+\usepackage{subcaption}
+
+% Tables
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{tabularx}
+
+% Math
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+
+% Colors and hyperlinks
+\usepackage[table,xcdraw]{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+
+% Code listings
+\usepackage{listings}
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    captionpos=b
+}
+
+% Bibliography
+\usepackage[numbers,sort&compress]{natbib}
+
+% Appendix
+\usepackage[toc,page]{appendix}
+
+% Headers and footers
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Chapter and section formatting
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+    {\normalfont\huge\bfseries}
+    {\chaptertitlename\ \thechapter}
+    {20pt}
+    {\Huge}
+\titlespacing*{\chapter}{0pt}{-30pt}{40pt}
+
+% Table of contents depth
+\setcounter{tocdepth}{3}
+\setcounter{secnumdepth}{3}
+
+% Custom column types
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
+
+%% ============================================================================
+%% DOCUMENT INFORMATION
+%% ============================================================================
+
+\newcommand{\thesistitle}{Fine-tuned YOLO11 for Maritime Vessel Detection in the Bosphorus Strait: A Comparative Study}
+\newcommand{\authorname}{Recep Ertuğrul Ekşi}
+\newcommand{\advisorname}{Dr. Rowanda D. Ahmed}
+\newcommand{\department}{Department of Computer Engineering}
+\newcommand{\university}{Üsküdar University}
+\newcommand{\thesisdate}{2025}
+
+%% ============================================================================
+%% DOCUMENT BEGIN
+%% ============================================================================
+
+\begin{document}
+
+%% ----------------------------------------------------------------------------
+%% FRONT MATTER
+%% ----------------------------------------------------------------------------
+\frontmatter
+\pagenumbering{roman}
+
+% Title Page
+\begin{titlepage}
+    \centering
+    \vspace*{1cm}
+    
+    {\Large \university \par}
+    \vspace{0.5cm}
+    {\large \department \par}
+    
+    \vspace{3cm}
+    
+    {\huge\bfseries \thesistitle \par}
+    
+    \vspace{3cm}
+    
+    {\Large Master's Thesis \par}
+    
+    \vspace{2cm}
+    
+    {\Large \authorname \par}
+    
+    \vspace{2cm}
+    
+    {\large Advisor: \advisorname \par}
+    
+    \vfill
+    
+    {\large Istanbul, \thesisdate \par}
+\end{titlepage}
+
+% Abstract
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+Maritime vessel detection in the Bosphorus Strait is critical for traffic management, safety, and environmental monitoring. As one of the world's busiest waterways, the strait handles over 40,000 vessels annually, necessitating robust automated surveillance systems. However, general-purpose object detection models trained on standard datasets struggle with domain-specific maritime imagery due to unique lighting conditions, vessel types, and background complexity.
+
+This thesis presents a comprehensive study of deep learning-based vessel detection for the Bosphorus Strait, focusing on the YOLO (You Only Look Once) family of object detectors. We demonstrate that vanilla COCO-pretrained YOLO models fail catastrophically on Bosphorus maritime imagery, achieving only 1--11\% recall despite including a ``boat'' class. Through domain-specific fine-tuning of YOLO11s with 581 training images, we achieve 87.54\% recall and 80.06\% precision (F1=0.836), representing an 8$\times$ improvement in detection performance.
+
+The thesis provides an in-depth analysis of the YOLO architecture evolution from YOLOv1 to YOLO11, theoretical foundations of convolutional neural networks for object detection, and comprehensive evaluation methodology. We conduct ablation studies on input resolution, confidence thresholds, and training data size to quantify their impact on detection performance. Error analysis identifies primary failure modes including shore structure misdetection, overlapping vessels, and wake foam interference.
+
+Our results demonstrate that domain-specific fine-tuning is essential, not optional, for maritime vessel detection applications. The fine-tuned model maintains real-time inference capability at 30+ FPS while achieving production-ready detection accuracy.
+
+\vspace{1cm}
+\textbf{Keywords:} YOLO, ship detection, maritime surveillance, transfer learning, object detection, Bosphorus Strait, deep learning, convolutional neural networks
+
+% Özet (Turkish Abstract)
+\chapter*{Özet}
+\addcontentsline{toc}{chapter}{Özet}
+
+İstanbul Boğazı'nda deniz aracı tespiti, trafik yönetimi, güvenlik ve çevre izleme açısından kritik öneme sahiptir. Dünyanın en işlek su yollarından biri olarak boğaz, yılda 40.000'den fazla gemiye ev sahipliği yapmakta ve güçlü otomatik gözetim sistemleri gerektirmektedir. Ancak standart veri setleri üzerinde eğitilmiş genel amaçlı nesne tespit modelleri, benzersiz aydınlatma koşulları, gemi türleri ve arka plan karmaşıklığı nedeniyle denizcilik görüntülerinde zorlanmaktadır.
+
+Bu tez, YOLO (You Only Look Once) nesne dedektör ailesi üzerine odaklanarak, İstanbul Boğazı için derin öğrenme tabanlı gemi tespitinin kapsamlı bir çalışmasını sunmaktadır. COCO üzerinde önceden eğitilmiş vanilla YOLO modellerinin, ``tekne'' sınıfı içermesine rağmen Boğaz denizcilik görüntülerinde yalnızca \%1--11 geri çağırma oranı elde ederek başarısız olduğunu gösteriyoruz. 581 eğitim görüntüsü ile YOLO11s'in alana özgü ince ayarı sayesinde \%87.54 geri çağırma ve \%80.06 kesinlik (F1=0.836) elde ediyoruz; bu da tespit performansında 8 kat iyileşme anlamına gelmektedir.
+
+Tez, YOLOv1'den YOLO11'e kadar YOLO mimari evriminin derinlemesine analizini, nesne tespiti için evrişimli sinir ağlarının teorik temellerini ve kapsamlı değerlendirme metodolojisini sunmaktadır. Giriş çözünürlüğü, güven eşikleri ve eğitim veri boyutunun tespit performansı üzerindeki etkisini ölçmek için ablasyon çalışmaları yürütüyoruz. Hata analizi, kıyı yapısı yanlış tespiti, üst üste binen gemiler ve dalga köpüğü paraziti dahil olmak üzere birincil başarısızlık modlarını tanımlar.
+
+Sonuçlarımız, alana özgü ince ayarın deniz aracı tespit uygulamaları için isteğe bağlı değil, zorunlu olduğunu göstermektedir.
+
+\vspace{1cm}
+\textbf{Anahtar Kelimeler:} YOLO, gemi tespiti, denizcilik gözetimi, transfer öğrenme, nesne tespiti, İstanbul Boğazı, derin öğrenme, evrişimli sinir ağları
+
+% Acknowledgements
+\chapter*{Acknowledgements}
+\addcontentsline{toc}{chapter}{Acknowledgements}
+
+I would like to express my sincere gratitude to my thesis advisor, Dr. Rowanda D. Ahmed, for her continuous support, guidance, and encouragement throughout this research. Her expertise and insights have been invaluable in shaping this work.
+
+I am grateful to Üsküdar University for providing the academic environment and resources necessary to complete this thesis. Special thanks to the faculty and staff of the Department of Computer Engineering for their support.
+
+I would like to acknowledge:
+\begin{itemize}
+    \item Google Colab for providing GPU compute resources (NVIDIA L4)
+    \item Ultralytics for the open-source YOLO implementation
+    \item Roboflow for dataset hosting and annotation tools
+    \item The Bosphorus Vision Project for creating and sharing the bogaz\_v\_1 dataset under CC BY 4.0 license
+\end{itemize}
+
+Finally, I extend my heartfelt thanks to my family and friends for their unwavering support and encouragement throughout my academic journey.
+
+% Table of Contents
+\tableofcontents
+
+% List of Figures
+\listoffigures
+\addcontentsline{toc}{chapter}{List of Figures}
+
+% List of Tables
+\listoftables
+\addcontentsline{toc}{chapter}{List of Tables}
+
+% List of Abbreviations
+\chapter*{List of Abbreviations}
+\addcontentsline{toc}{chapter}{List of Abbreviations}
+
+\begin{tabular}{ll}
+    \textbf{AIS} & Automatic Identification System \\
+    \textbf{AP} & Average Precision \\
+    \textbf{AMP} & Automatic Mixed Precision \\
+    \textbf{BCE} & Binary Cross-Entropy \\
+    \textbf{CNN} & Convolutional Neural Network \\
+    \textbf{COCO} & Common Objects in Context \\
+    \textbf{C2PSA} & Cross Stage Partial with Spatial Attention \\
+    \textbf{C3k2} & Cross Stage Partial with 2 Convolutions \\
+    \textbf{DFL} & Distribution Focal Loss \\
+    \textbf{FN} & False Negative \\
+    \textbf{FP} & False Positive \\
+    \textbf{FPN} & Feature Pyramid Network \\
+    \textbf{FPS} & Frames Per Second \\
+    \textbf{GFLOPs} & Giga Floating Point Operations \\
+    \textbf{GPU} & Graphics Processing Unit \\
+    \textbf{IoU} & Intersection over Union \\
+    \textbf{mAP} & mean Average Precision \\
+    \textbf{NMS} & Non-Maximum Suppression \\
+    \textbf{PANet} & Path Aggregation Network \\
+    \textbf{R-CNN} & Region-based Convolutional Neural Network \\
+    \textbf{ReLU} & Rectified Linear Unit \\
+    \textbf{RPN} & Region Proposal Network \\
+    \textbf{SiLU} & Sigmoid Linear Unit \\
+    \textbf{SPP} & Spatial Pyramid Pooling \\
+    \textbf{SPPF} & Spatial Pyramid Pooling Fast \\
+    \textbf{SSD} & Single Shot MultiBox Detector \\
+    \textbf{TP} & True Positive \\
+    \textbf{YOLO} & You Only Look Once \\
+\end{tabular}
+
+%% ----------------------------------------------------------------------------
+%% MAIN MATTER
+%% ----------------------------------------------------------------------------
+\mainmatter
+\pagenumbering{arabic}
+
+% Include chapters
+\include{chapters/chapter1_introduction}
+\include{chapters/chapter2_literature_review}
+\include{chapters/chapter3_theoretical_background}
+\include{chapters/chapter4_methodology}
+\include{chapters/chapter5_experiments}
+\include{chapters/chapter6_discussion}
+\include{chapters/chapter7_conclusion}
+
+%% ----------------------------------------------------------------------------
+%% BACK MATTER
+%% ----------------------------------------------------------------------------
+\backmatter
+
+% Bibliography
+\bibliographystyle{plainnat}
+\bibliography{bibliography}
+\addcontentsline{toc}{chapter}{Bibliography}
+
+% Appendices
+\begin{appendices}
+\include{appendices/appendix_a_dataset}
+\include{appendices/appendix_b_training_logs}
+\include{appendices/appendix_c_code}
+\include{appendices/appendix_d_results}
+\end{appendices}
+
+\end{document}

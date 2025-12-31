@@ -1,0 +1,570 @@
+%% Chapter 3: Theoretical Background
+%% Target: 10-12 pages
+
+\chapter{Theoretical Background}
+\label{ch:theoretical_background}
+
+This chapter establishes the theoretical foundations underlying deep learning-based object detection. We begin with convolutional neural network fundamentals, proceed to a detailed analysis of the YOLO11 architecture used in this thesis, examine the loss functions that guide training, and conclude with formal definitions of evaluation metrics.
+
+%% ============================================================================
+\section{Convolutional Neural Networks}
+\label{sec:cnn_fundamentals}
+%% ============================================================================
+
+Convolutional Neural Networks (CNNs) form the backbone of modern computer vision systems, including object detectors. This section reviews the fundamental components and principles that enable CNNs to extract meaningful features from images.
+
+\subsection{The Convolution Operation}
+
+The core operation in CNNs is the discrete convolution between an input tensor and a learnable filter (kernel). For a 2D input image $I$ and a kernel $K$ of size $k \times k$, the convolution at position $(i, j)$ is:
+
+\begin{equation}
+    (I * K)(i, j) = \sum_{m=0}^{k-1} \sum_{n=0}^{k-1} I(i+m, j+n) \cdot K(m, n)
+\end{equation}
+
+For multi-channel inputs (e.g., RGB images with 3 channels), the convolution operates across all input channels and sums the results:
+
+\begin{equation}
+    (I * K)(i, j) = \sum_{c=0}^{C_{in}-1} \sum_{m=0}^{k-1} \sum_{n=0}^{k-1} I(i+m, j+n, c) \cdot K(m, n, c)
+\end{equation}
+
+where $C_{in}$ is the number of input channels. A convolutional layer typically applies multiple filters to produce multiple output channels (feature maps).
+
+\subsubsection{Stride and Padding}
+
+Two key parameters control the convolution output dimensions:
+
+\begin{itemize}
+    \item \textbf{Stride ($s$):} The step size between consecutive convolution positions. Stride $> 1$ reduces spatial dimensions.
+    \item \textbf{Padding ($p$):} Zero-values added around the input border. Padding preserves spatial dimensions or controls output size.
+\end{itemize}
+
+Given input size $H_{in} \times W_{in}$, kernel size $k$, stride $s$, and padding $p$, the output dimensions are:
+
+\begin{equation}
+    H_{out} = \left\lfloor \frac{H_{in} + 2p - k}{s} \right\rfloor + 1, \quad W_{out} = \left\lfloor \frac{W_{in} + 2p - k}{s} \right\rfloor + 1
+\end{equation}
+
+\subsubsection{Feature Maps and Hierarchical Features}
+
+The output of a convolutional layer is called a \textit{feature map}. Successive convolutional layers build a hierarchy of features:
+
+\begin{enumerate}
+    \item \textbf{Early Layers:} Detect low-level features (edges, corners, textures)
+    \item \textbf{Middle Layers:} Combine low-level features into mid-level patterns (shapes, parts)
+    \item \textbf{Deep Layers:} Represent high-level semantic concepts (objects, scenes)
+\end{enumerate}
+
+This hierarchical feature extraction is fundamental to CNNs' ability to recognize objects regardless of position, scale, and minor variations.
+
+\subsection{Pooling Layers}
+
+Pooling layers reduce spatial dimensions while retaining important features, providing translation invariance and reducing computational cost.
+
+\subsubsection{Max Pooling}
+
+Max pooling selects the maximum value within each pooling window:
+
+\begin{equation}
+    \text{MaxPool}(i, j) = \max_{(m, n) \in \mathcal{R}_{ij}} I(m, n)
+\end{equation}
+
+where $\mathcal{R}_{ij}$ is the pooling region at position $(i, j)$. Max pooling preserves the strongest activation, which typically corresponds to the presence of the feature.
+
+\subsubsection{Average Pooling}
+
+Average pooling computes the mean value within each pooling window:
+
+\begin{equation}
+    \text{AvgPool}(i, j) = \frac{1}{|\mathcal{R}_{ij}|} \sum_{(m, n) \in \mathcal{R}_{ij}} I(m, n)
+\end{equation}
+
+Average pooling provides smoother downsampling but may dilute strong activations.
+
+\subsubsection{Global Average Pooling}
+
+Global Average Pooling (GAP) computes the average across the entire spatial extent of each channel, producing a single value per channel. GAP is commonly used before the final classification layer, reducing spatial dimensions to 1×1.
+
+\subsection{Activation Functions}
+
+Activation functions introduce non-linearity, enabling networks to learn complex mappings.
+
+\subsubsection{ReLU (Rectified Linear Unit)}
+
+The Rectified Linear Unit~\citep{krizhevsky2017imagenet} is the most widely used activation:
+
+\begin{equation}
+    \text{ReLU}(x) = \max(0, x)
+\end{equation}
+
+ReLU is computationally efficient and avoids the vanishing gradient problem for positive values. However, ``dying ReLU'' can occur when units become permanently inactive (always outputting zero).
+
+\subsubsection{Leaky ReLU}
+
+Leaky ReLU addresses dying ReLU by allowing small negative values:
+
+\begin{equation}
+    \text{LeakyReLU}(x) = \begin{cases} x & \text{if } x > 0 \\ \alpha x & \text{if } x \leq 0 \end{cases}
+\end{equation}
+
+where $\alpha$ is a small constant (typically 0.01 or 0.1).
+
+\subsubsection{SiLU (Sigmoid Linear Unit)}
+
+SiLU, also known as Swish, is used in modern YOLO architectures:
+
+\begin{equation}
+    \text{SiLU}(x) = x \cdot \sigma(x) = \frac{x}{1 + e^{-x}}
+\end{equation}
+
+where $\sigma(x)$ is the sigmoid function. SiLU is smooth, non-monotonic, and has been shown to improve training in deep networks.
+
+\subsubsection{Mish Activation}
+
+Mish, used in YOLOv4, is another smooth activation:
+
+\begin{equation}
+    \text{Mish}(x) = x \cdot \tanh(\text{softplus}(x)) = x \cdot \tanh(\ln(1 + e^x))
+\end{equation}
+
+\subsection{Batch Normalization}
+
+Batch Normalization~\citep{ioffe2015batchnorm} normalizes layer inputs across the mini-batch, stabilizing training and enabling higher learning rates.
+
+For a mini-batch $\mathcal{B} = \{x_1, \ldots, x_m\}$, batch normalization computes:
+
+\begin{equation}
+    \mu_{\mathcal{B}} = \frac{1}{m} \sum_{i=1}^{m} x_i, \quad \sigma_{\mathcal{B}}^2 = \frac{1}{m} \sum_{i=1}^{m} (x_i - \mu_{\mathcal{B}})^2
+\end{equation}
+
+\begin{equation}
+    \hat{x}_i = \frac{x_i - \mu_{\mathcal{B}}}{\sqrt{\sigma_{\mathcal{B}}^2 + \epsilon}}
+\end{equation}
+
+\begin{equation}
+    y_i = \gamma \hat{x}_i + \beta
+\end{equation}
+
+where $\gamma$ and $\beta$ are learnable parameters that allow the network to undo the normalization if beneficial, and $\epsilon$ is a small constant for numerical stability.
+
+\subsection{Residual Connections}
+
+He et al.~\citep{he2016resnet} introduced residual connections to enable training of very deep networks by providing shortcut paths for gradient flow.
+
+A residual block computes:
+
+\begin{equation}
+    \mathbf{y} = \mathcal{F}(\mathbf{x}, \{W_i\}) + \mathbf{x}
+\end{equation}
+
+where $\mathcal{F}(\mathbf{x}, \{W_i\})$ is the residual mapping (typically two or three convolutional layers) and $\mathbf{x}$ is the identity shortcut. The key insight is that learning the residual $\mathcal{F}(\mathbf{x})$ is easier than learning the full mapping when the desired output is close to the input.
+
+Residual connections enable:
+\begin{itemize}
+    \item Training of networks with hundreds of layers
+    \item Improved gradient flow during backpropagation
+    \item Better feature reuse across layers
+\end{itemize}
+
+\subsection{Depthwise Separable Convolutions}
+
+Depthwise separable convolutions reduce computational cost by decomposing standard convolution into:
+
+\begin{enumerate}
+    \item \textbf{Depthwise Convolution:} Apply a single filter per input channel
+    \item \textbf{Pointwise Convolution:} 1×1 convolution to combine channel outputs
+\end{enumerate}
+
+For input with $C_{in}$ channels, kernel size $k$, and $C_{out}$ output channels:
+\begin{itemize}
+    \item Standard convolution: $k^2 \cdot C_{in} \cdot C_{out}$ multiplications per output position
+    \item Depthwise separable: $k^2 \cdot C_{in} + C_{in} \cdot C_{out}$ multiplications per output position
+\end{itemize}
+
+The reduction factor is approximately $\frac{1}{C_{out}} + \frac{1}{k^2}$, which for typical values ($C_{out} = 256$, $k = 3$) is roughly 8-9×.
+
+%% ============================================================================
+\section{YOLO11 Architecture}
+\label{sec:yolo11_architecture}
+%% ============================================================================
+
+This section provides a detailed analysis of the YOLO11 architecture, specifically the YOLO11s (small) variant used in this thesis. YOLO11 builds upon previous YOLO versions with refined architectural components for improved efficiency and accuracy.
+
+\subsection{Overall Architecture}
+
+YOLO11 follows the encoder-decoder paradigm common to modern object detectors:
+
+\begin{enumerate}
+    \item \textbf{Backbone:} Extracts hierarchical features from input images
+    \item \textbf{Neck:} Aggregates multi-scale features from the backbone
+    \item \textbf{Head:} Produces detection outputs (bounding boxes and class probabilities)
+\end{enumerate}
+
+Figure~\ref{fig:yolo11_architecture} illustrates the high-level architecture.
+
+\begin{figure}[!ht]
+\centering
+\fbox{\parbox{0.9\textwidth}{
+\centering
+\textbf{YOLO11 Architecture Overview}\\[10pt]
+\begin{tabular}{c}
+Input Image (1088×1088×3) \\
+$\downarrow$ \\
+\textbf{Backbone} (C3k2, SPPF) \\
+$\downarrow$ Feature Maps: P3, P4, P5 \\
+$\downarrow$ \\
+\textbf{Neck} (PANet + C2PSA) \\
+$\downarrow$ Multi-scale Features \\
+$\downarrow$ \\
+\textbf{Detection Heads} (P3, P4, P5) \\
+$\downarrow$ \\
+Predictions + NMS $\rightarrow$ Final Detections
+\end{tabular}
+}}
+\caption{High-level YOLO11 architecture showing backbone, neck, and detection head components}
+\label{fig:yolo11_architecture}
+\end{figure}
+
+\subsection{Backbone Network}
+
+The YOLO11 backbone extracts features through a series of convolutional blocks with increasing receptive fields and channel dimensions.
+
+\subsubsection{Conv Blocks}
+
+The basic building block is the Conv module, which combines:
+\begin{enumerate}
+    \item Convolution (3×3 or 1×1)
+    \item Batch Normalization
+    \item SiLU Activation
+\end{enumerate}
+
+\subsubsection{C3k2 Blocks}
+
+C3k2 (Cross Stage Partial with 2 convolutions) is the primary feature extraction module in YOLO11. It extends the CSP (Cross Stage Partial) concept with efficient 3×3 convolutions.
+
+The C3k2 block:
+\begin{enumerate}
+    \item Splits input into two branches
+    \item Processes one branch through a sequence of bottleneck modules
+    \item Concatenates both branches
+    \item Applies a final convolution to fuse features
+\end{enumerate}
+
+This design:
+\begin{itemize}
+    \item Reduces computational cost by processing only half the channels through expensive operations
+    \item Maintains gradient flow through the direct path
+    \item Enables rich feature combination through concatenation
+\end{itemize}
+
+\subsubsection{SPPF (Spatial Pyramid Pooling Fast)}
+
+SPPF aggregates features at multiple scales through sequential max pooling operations. Unlike the original SPP with parallel pooling at different kernel sizes, SPPF applies sequential 5×5 max pooling operations:
+
+\begin{equation}
+    \text{SPPF}(x) = \text{Conv}([\text{x}, \text{MaxPool}(x), \text{MaxPool}^2(x), \text{MaxPool}^3(x)])
+\end{equation}
+
+where $[\cdot]$ denotes concatenation and $\text{MaxPool}^n$ indicates $n$ sequential applications. This achieves the same receptive field expansion as parallel pooling with reduced computation.
+
+\subsection{Neck: Feature Aggregation}
+
+The neck combines features from different backbone levels to enable detection at multiple scales.
+
+\subsubsection{Path Aggregation Network (PANet)}
+
+PANet enhances the standard top-down Feature Pyramid Network (FPN) with an additional bottom-up pathway, creating bidirectional feature flow:
+
+\begin{enumerate}
+    \item \textbf{Top-Down Path:} High-level semantic features flow to lower levels
+    \item \textbf{Bottom-Up Path:} High-resolution spatial features flow to higher levels
+\end{enumerate}
+
+This bidirectional aggregation ensures that each detection scale has access to both semantic and spatial information.
+
+\subsubsection{C2PSA (Cross Stage Partial with Spatial Attention)}
+
+C2PSA modules incorporate spatial attention mechanisms into the feature aggregation:
+
+\begin{equation}
+    \text{C2PSA}(x) = x + \text{SA}(\text{CSP}(x))
+\end{equation}
+
+where SA denotes spatial attention. Spatial attention helps the network focus on relevant image regions, suppressing background noise and emphasizing object locations.
+
+\subsection{Detection Head}
+
+YOLO11 uses anchor-free detection with decoupled heads for classification and localization.
+
+\subsubsection{Multi-Scale Detection}
+
+Detection occurs at three scales corresponding to different feature map resolutions:
+
+\begin{itemize}
+    \item \textbf{P3 (Large Scale):} High resolution, detects small objects
+    \item \textbf{P4 (Medium Scale):} Medium resolution, detects medium objects
+    \item \textbf{P5 (Small Scale):} Low resolution, detects large objects
+\end{itemize}
+
+For input size 1088×1088, the feature map sizes are approximately:
+\begin{itemize}
+    \item P3: 136×136
+    \item P4: 68×68
+    \item P5: 34×34
+\end{itemize}
+
+\subsubsection{Decoupled Head}
+
+Unlike coupled heads that share features for classification and localization, YOLO11 uses separate branches:
+
+\begin{itemize}
+    \item \textbf{Classification Branch:} Predicts class probabilities using sigmoid activation
+    \item \textbf{Regression Branch:} Predicts bounding box coordinates using Distribution Focal Loss
+\end{itemize}
+
+Decoupling allows each task to optimize its representations independently.
+
+\subsubsection{Anchor-Free Detection}
+
+YOLO11 eliminates predefined anchor boxes, instead predicting:
+\begin{itemize}
+    \item Object center location $(x, y)$ relative to grid cell
+    \item Bounding box dimensions $(w, h)$ using DFL
+\end{itemize}
+
+Anchor-free detection simplifies the pipeline and improves generalization to objects with unusual aspect ratios.
+
+\subsection{YOLO11s Model Specifications}
+
+Table~\ref{tab:yolo11s_specs} details the YOLO11s variant used in this thesis.
+
+\begin{table}[!ht]
+\centering
+\caption{YOLO11s model specifications}
+\label{tab:yolo11s_specs}
+\begin{tabular}{lc}
+\toprule
+\textbf{Property} & \textbf{Value} \\
+\midrule
+Total layers & 181 \\
+Layers after fusion & 100 \\
+Parameters & 9,428,179 (9.4M) \\
+GFLOPs & 21.5 \\
+Input resolution (thesis) & 1088×1088 \\
+Detection scales & 3 (P3, P4, P5) \\
+Head channels & 128, 256, 512 \\
+Anchor-free & Yes \\
+Activation & SiLU \\
+Normalization & Batch Normalization \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%% ============================================================================
+\section{Loss Functions for Object Detection}
+\label{sec:loss_functions}
+%% ============================================================================
+
+Training object detectors requires loss functions that capture both localization accuracy and classification correctness. YOLO11 employs a composite loss combining multiple components.
+
+\subsection{Box Regression Loss}
+
+Box regression loss measures the discrepancy between predicted and ground truth bounding boxes.
+
+\subsubsection{IoU-Based Losses}
+
+Intersection over Union (IoU) directly measures overlap between predicted box $B_p$ and ground truth box $B_{gt}$:
+
+\begin{equation}
+    \text{IoU} = \frac{|B_p \cap B_{gt}|}{|B_p \cup B_{gt}|}
+\end{equation}
+
+IoU loss is simply $\mathcal{L}_{IoU} = 1 - \text{IoU}$.
+
+\subsubsection{GIoU (Generalized IoU)}
+
+GIoU addresses cases where boxes don't overlap by considering the smallest enclosing box $B_c$:
+
+\begin{equation}
+    \text{GIoU} = \text{IoU} - \frac{|B_c \setminus (B_p \cup B_{gt})|}{|B_c|}
+\end{equation}
+
+GIoU ranges from -1 to 1, with higher values indicating better overlap.
+
+\subsubsection{DIoU (Distance IoU)}
+
+DIoU adds a penalty for center distance:
+
+\begin{equation}
+    \text{DIoU} = \text{IoU} - \frac{\rho^2(\mathbf{b}_p, \mathbf{b}_{gt})}{c^2}
+\end{equation}
+
+where $\rho$ is Euclidean distance between box centers and $c$ is the diagonal length of the enclosing box.
+
+\subsubsection{CIoU (Complete IoU)}
+
+CIoU further considers aspect ratio consistency:
+
+\begin{equation}
+    \text{CIoU} = \text{IoU} - \frac{\rho^2(\mathbf{b}_p, \mathbf{b}_{gt})}{c^2} - \alpha v
+\end{equation}
+
+where:
+\begin{equation}
+    v = \frac{4}{\pi^2}\left(\arctan\frac{w_{gt}}{h_{gt}} - \arctan\frac{w_p}{h_p}\right)^2
+\end{equation}
+
+and $\alpha$ is a weighting factor. CIoU provides comprehensive guidance for box refinement.
+
+\subsubsection{Distribution Focal Loss (DFL)}
+
+YOLO11 uses Distribution Focal Loss for bounding box regression, predicting a discrete probability distribution over possible coordinate values rather than point estimates. For coordinate $y$ with label $y_i < y < y_{i+1}$:
+
+\begin{equation}
+    \mathcal{L}_{DFL} = -\left((y_{i+1} - y)\log(P(y_i)) + (y - y_i)\log(P(y_{i+1}))\right)
+\end{equation}
+
+DFL enables the network to express uncertainty in predictions and has been shown to improve localization accuracy.
+
+\subsection{Classification Loss}
+
+Classification loss measures the correctness of class predictions.
+
+\subsubsection{Binary Cross-Entropy (BCE)}
+
+For multi-label classification (objects can belong to multiple classes), BCE is applied independently per class:
+
+\begin{equation}
+    \mathcal{L}_{BCE} = -\sum_{c=1}^{C}\left[y_c \log(\hat{y}_c) + (1-y_c)\log(1-\hat{y}_c)\right]
+\end{equation}
+
+where $y_c \in \{0, 1\}$ is the ground truth label for class $c$ and $\hat{y}_c$ is the predicted probability.
+
+\subsubsection{Focal Loss}
+
+Focal Loss~\citep{lin2017retinanet} addresses class imbalance by down-weighting easy examples:
+
+\begin{equation}
+    \mathcal{L}_{FL} = -\alpha_t (1 - p_t)^\gamma \log(p_t)
+\end{equation}
+
+where $p_t$ is the probability of the correct class, $\alpha_t$ balances positive/negative examples, and $\gamma$ (typically 2) controls the focusing strength.
+
+\subsection{Objectness Loss}
+
+Objectness loss measures whether an object exists at a given location. In anchor-free detection, this is typically BCE applied to the objectness score, with targets assigned based on center distance to ground truth objects.
+
+\subsection{Total Loss}
+
+The total YOLO11 loss combines all components:
+
+\begin{equation}
+    \mathcal{L}_{total} = \lambda_{box} \mathcal{L}_{box} + \lambda_{cls} \mathcal{L}_{cls} + \lambda_{dfl} \mathcal{L}_{dfl}
+\end{equation}
+
+where $\lambda_{box}$, $\lambda_{cls}$, and $\lambda_{dfl}$ are weighting hyperparameters balancing the contribution of each loss component.
+
+%% ============================================================================
+\section{Evaluation Metrics}
+\label{sec:evaluation_metrics}
+%% ============================================================================
+
+Rigorous evaluation requires well-defined metrics~\citep{padilla2020survey}. This section formally defines the metrics used throughout this thesis.
+
+\subsection{Intersection over Union (IoU)}
+
+IoU measures the overlap between predicted bounding box $B_p$ and ground truth bounding box $B_{gt}$:
+
+\begin{equation}
+    \text{IoU}(B_p, B_{gt}) = \frac{\text{Area}(B_p \cap B_{gt})}{\text{Area}(B_p \cup B_{gt})}
+\end{equation}
+
+IoU ranges from 0 (no overlap) to 1 (perfect overlap). A detection is typically considered correct if IoU $\geq$ 0.5 (COCO standard).
+
+\subsection{True Positives, False Positives, False Negatives}
+
+For a given IoU threshold $\tau$:
+
+\begin{itemize}
+    \item \textbf{True Positive (TP):} Predicted box with IoU $\geq \tau$ with a ground truth box
+    \item \textbf{False Positive (FP):} Predicted box with IoU $< \tau$ with all ground truth boxes, or duplicate detection of already-matched ground truth
+    \item \textbf{False Negative (FN):} Ground truth box not matched by any prediction
+\end{itemize}
+
+\subsection{Precision and Recall}
+
+Precision measures the fraction of predictions that are correct:
+
+\begin{equation}
+    \text{Precision} = \frac{TP}{TP + FP}
+\end{equation}
+
+Recall measures the fraction of ground truths that are detected:
+
+\begin{equation}
+    \text{Recall} = \frac{TP}{TP + FN}
+\end{equation}
+
+High precision indicates few false alarms; high recall indicates few missed objects. There is typically a trade-off between precision and recall controlled by the confidence threshold.
+
+\subsection{F1 Score}
+
+The F1 score is the harmonic mean of precision and recall, providing a single metric that balances both:
+
+\begin{equation}
+    \text{F1} = 2 \cdot \frac{\text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}} = \frac{2 \cdot TP}{2 \cdot TP + FP + FN}
+\end{equation}
+
+F1 ranges from 0 to 1, with higher values indicating better overall performance.
+
+\subsection{Average Precision (AP)}
+
+Average Precision summarizes the precision-recall curve by computing the area under the curve:
+
+\begin{equation}
+    \text{AP} = \int_0^1 p(r) \, dr
+\end{equation}
+
+where $p(r)$ is precision at recall level $r$. In practice, AP is computed using the 11-point or all-point interpolation method.
+
+\subsection{Mean Average Precision (mAP)}
+
+For multi-class detection, mAP averages AP across all classes:
+
+\begin{equation}
+    \text{mAP} = \frac{1}{C} \sum_{c=1}^{C} \text{AP}_c
+\end{equation}
+
+Common variants include:
+\begin{itemize}
+    \item \textbf{mAP@0.5:} AP computed at IoU threshold 0.5
+    \item \textbf{mAP@0.5:0.95:} Average of AP at IoU thresholds 0.5, 0.55, ..., 0.95 (COCO metric)
+\end{itemize}
+
+\subsection{Inference Speed}
+
+Inference speed is measured in:
+\begin{itemize}
+    \item \textbf{Milliseconds per image:} Time to process a single image
+    \item \textbf{Frames Per Second (FPS):} Number of images processed per second ($\text{FPS} = \frac{1000}{\text{ms per image}}$)
+\end{itemize}
+
+Real-time detection typically requires $\geq$30 FPS (33 ms per image).
+
+%% ============================================================================
+\section{Summary}
+\label{sec:theory_summary}
+%% ============================================================================
+
+This chapter has established the theoretical foundations for the thesis:
+
+\begin{enumerate}
+    \item \textbf{CNN Fundamentals:} Convolution, pooling, activation functions, batch normalization, and residual connections that enable deep feature extraction.
+    
+    \item \textbf{YOLO11 Architecture:} Backbone (C3k2, SPPF), neck (PANet, C2PSA), and anchor-free detection head components that together achieve efficient, accurate detection.
+    
+    \item \textbf{Loss Functions:} CIoU and DFL for box regression, focal loss for classification, combined to guide effective training.
+    
+    \item \textbf{Evaluation Metrics:} Formal definitions of IoU, precision, recall, F1, and mAP that enable rigorous performance assessment.
+\end{enumerate}
+
+The following chapter applies these theoretical foundations to describe our dataset and methodology for Bosphorus maritime vessel detection.
