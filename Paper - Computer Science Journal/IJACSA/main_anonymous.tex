@@ -79,13 +79,15 @@ The remainder of this paper is organized as follows: Section~II reviews related 
 
 \section{Related Work}
 
+\vspace{0.8em}
+
 \subsection{Evolution of YOLO Object Detectors}
 
-The YOLO (You Only Look Once) paradigm, introduced by Redmon et al.~\cite{redmon2016yolo}, revolutionized real-time object detection by framing detection as a single regression problem. Unlike two-stage detectors such as R-CNN variants that first propose regions and then classify them, YOLO processes the entire image in one forward pass, enabling real-time inference speeds.
+The YOLO (You Only Look Once) paradigm, introduced by Redmon et al.~\cite{redmon2016yolo}, revolutionized real-time object detection by framing detection as a single regression problem. Unlike two-stage detectors such as Faster R-CNN~\cite{ren2015faster} that first propose regions and then classify them, YOLO processes the entire image in one forward pass, enabling real-time inference speeds.
 
 Subsequent versions brought substantial improvements: YOLOv2~\cite{redmon2017yolo9000} introduced batch normalization and anchor boxes; YOLOv3~\cite{redmon2018yolov3} added multi-scale predictions; and YOLOv4~\cite{bochkovskiy2020yolov4} incorporated numerous architectural innovations including CSPDarknet backbone, SPP (Spatial Pyramid Pooling), and PANet path aggregation.
 
-The Ultralytics team has continued YOLO development with YOLOv5 through YOLO11~\cite{ultralytics2024yolo11}, introducing improvements in training strategies, augmentation pipelines, and architectural refinements. YOLO11, released in 2024, features C3k2 blocks for efficient feature extraction, C2PSA (Cross Stage Partial with Spatial Attention) modules, and SPPF (Spatial Pyramid Pooling Fast) for multi-scale feature aggregation. The model family includes variants from nano (n) to extra-large (x), with the small (s) variant offering 9.4 million parameters and 21.5 GFLOPs---suitable for edge deployment scenarios common in maritime surveillance.
+The Ultralytics team has continued YOLO development with YOLOv5~\cite{jocher2022yolov5} through YOLO11~\cite{ultralytics2024yolo11}, introducing improvements in training strategies, augmentation pipelines, and architectural refinements. Concurrent developments include YOLOv6~\cite{li2022yolov6} optimized for industrial deployment and YOLOv7~\cite{wang2023yolov7} which introduced efficient layer aggregation networks. YOLO11, released in 2024, features C3k2 blocks for efficient feature extraction, C2PSA (Cross Stage Partial with Spatial Attention) modules, and SPPF (Spatial Pyramid Pooling Fast) for multi-scale feature aggregation. The model family includes variants from nano (n) to extra-large (x), with the small (s) variant offering 9.4 million parameters and 21.5 GFLOPs---suitable for edge deployment scenarios common in maritime surveillance.
 
 \subsection{Maritime Object Detection}
 
@@ -93,7 +95,7 @@ Maritime vessel detection presents unique challenges compared to general object 
 
 Traditional maritime surveillance relied on radar and Automatic Identification System (AIS) transponders. However, AIS requires vessel cooperation and smaller vessels often lack transponders. Camera-based detection complements these systems by providing visual verification and detecting non-cooperative vessels.
 
-Recent work has applied deep learning to maritime detection. Shao et al.~\cite{shao2018seaships} introduced the SeaShips dataset and demonstrated CNN-based detection for coastal surveillance. The Singapore Maritime Dataset~\cite{prasad2017video} provided benchmark data for near-shore vessel detection. However, these datasets capture different maritime environments than the Bosphorus, with its unique combination of urban shoreline, bridge infrastructure, and distinctive vessel types.
+Recent work has applied deep learning to maritime detection. Shao et al.~\cite{shao2018seaships} introduced the SeaShips dataset and demonstrated CNN-based detection for coastal surveillance. The Singapore Maritime Dataset~\cite{prasad2017video} provided benchmark data for near-shore vessel detection. More recent approaches have incorporated attention mechanisms~\cite{chen2020survey} and improved YOLO architectures~\cite{huang2021survey} for enhanced ship detection in various maritime environments. However, these datasets capture different maritime environments than the Bosphorus, with its unique combination of urban shoreline, bridge infrastructure, and distinctive vessel types.
 
 \subsection{Transfer Learning for Domain Adaptation}
 
@@ -104,6 +106,8 @@ For object detection, fine-tuning typically involves: (1) initializing with pret
 The effectiveness of transfer learning depends on the similarity between source and target domains. COCO's ``boat'' class provides a reasonable initialization for maritime detection, but the domain gap---recreational boats versus commercial vessels, varied backgrounds versus consistent maritime scenes---necessitates fine-tuning for optimal performance. Our work quantifies this domain gap by comparing vanilla and fine-tuned models on identical test data.
 
 \section{Methodology}
+
+\vspace{0.8em}
 
 \subsection{Dataset}
 
@@ -155,7 +159,7 @@ Detection scales & 3 (128, 256, 512 channels) \\
 \end{tabular}
 \end{table}
 
-The architecture employs several key components: Conv layers with varying kernel sizes for hierarchical feature extraction, C3k2 blocks combining cross-stage partial connections with efficient 3$\times$3 convolutions, SPPF (Spatial Pyramid Pooling Fast) for multi-scale feature aggregation, C2PSA modules incorporating spatial attention mechanisms, and a three-scale detection head for objects at different sizes. The pretrained model was initialized with COCO weights, with 493 of 499 transferable items successfully loaded.
+The architecture employs several key components: Conv layers with varying kernel sizes for hierarchical feature extraction building on ResNet principles~\cite{he2016deep}, C3k2 blocks combining cross-stage partial connections with efficient 3$\times$3 convolutions, SPPF (Spatial Pyramid Pooling Fast) for multi-scale feature aggregation, C2PSA modules incorporating spatial attention mechanisms, and a three-scale detection head inspired by Feature Pyramid Networks~\cite{lin2017feature} for objects at different sizes. The pretrained model was initialized with COCO weights, with 493 of 499 transferable items successfully loaded.
 
 \subsection{Training Configuration}
 
@@ -216,6 +220,8 @@ All models used a confidence threshold of 0.25. For vanilla models, we filtered 
 Evaluation metrics included: precision (TP / (TP + FP)), recall (TP / (TP + FN)), F1 score (harmonic mean of precision and recall), average IoU of matched detections, and inference time per image.
 
 \section{Experimental Results}
+
+\vspace{0.8em}
 
 \subsection{Overall Performance Comparison}
 
@@ -301,6 +307,8 @@ The visualization emphasizes the order-of-magnitude gap between vanilla and fine
 
 \section{Discussion}
 
+\vspace{0.8em}
+
 \subsection{Why Fine-tuning Helps Dramatically}
 
 The substantial performance gap between vanilla and fine-tuned models can be attributed to several factors:
@@ -381,11 +389,35 @@ J. Redmon and A. Farhadi, ``YOLOv3: An Incremental Improvement,'' \textit{arXiv 
 \bibitem{bochkovskiy2020yolov4}
 A. Bochkovskiy, C.-Y. Wang, and H.-Y. M. Liao, ``YOLOv4: Optimal Speed and Accuracy of Object Detection,'' \textit{arXiv preprint arXiv:2004.10934}, 2020.
 
+\bibitem{jocher2022yolov5}
+G. Jocher \textit{et al.}, ``YOLOv5 by Ultralytics,'' GitHub, 2022. [Online]. Available: https://github.com/ultralytics/yolov5
+
+\bibitem{li2022yolov6}
+C. Li \textit{et al.}, ``YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications,'' \textit{arXiv preprint arXiv:2209.02976}, 2022.
+
+\bibitem{wang2023yolov7}
+C.-Y. Wang, A. Bochkovskiy, and H.-Y. M. Liao, ``YOLOv7: Trainable Bag-of-Freebies Sets New State-of-the-Art for Real-Time Object Detectors,'' in \textit{Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2023, pp. 7464--7475.
+
+\bibitem{ren2015faster}
+S. Ren, K. He, R. Girshick, and J. Sun, ``Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks,'' in \textit{Advances in Neural Information Processing Systems (NeurIPS)}, vol. 28, 2015, pp. 91--99.
+
+\bibitem{he2016deep}
+K. He, X. Zhang, S. Ren, and J. Sun, ``Deep Residual Learning for Image Recognition,'' in \textit{Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2016, pp. 770--778.
+
+\bibitem{lin2017feature}
+T.-Y. Lin, P. Doll{\'a}r, R. Girshick, K. He, B. Hariharan, and S. Belongie, ``Feature Pyramid Networks for Object Detection,'' in \textit{Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2017, pp. 2117--2125.
+
 \bibitem{prasad2017video}
 D. K. Prasad, D. Rajan, L. Rachmawati, E. Rajabally, and C. Quek, ``Video Processing from Electro-Optical Sensors for Object Detection and Tracking in a Maritime Environment: A Survey,'' \textit{IEEE Trans. Intell. Transp. Syst.}, vol. 18, no. 8, pp. 1993--2016, 2017.
 
 \bibitem{shao2018seaships}
 Z. Shao, W. Wu, Z. Wang, W. Du, and C. Li, ``SeaShips: A Large-Scale Precisely Annotated Dataset for Ship Detection,'' \textit{IEEE Trans. Multimedia}, vol. 20, no. 10, pp. 2593--2604, 2018.
+
+\bibitem{chen2020survey}
+L. Chen, W. Shi, and D. Deng, ``Improved YOLOv3 Based on Attention Mechanism for Fast and Accurate Ship Detection in Optical Remote Sensing Images,'' \textit{Remote Sensing}, vol. 13, no. 4, p. 660, 2021.
+
+\bibitem{huang2021survey}
+H. Huang, D. Sun, R. Wang, C. Zhu, and B. Liu, ``Ship Target Detection Based on Improved YOLO Network,'' \textit{Mathematical Problems in Engineering}, vol. 2020, Article ID 6402149, 2020.
 
 \bibitem{pan2010survey}
 S. J. Pan and Q. Yang, ``A Survey on Transfer Learning,'' \textit{IEEE Trans. Knowl. Data Eng.}, vol. 22, no. 10, pp. 1345--1359, 2010.
