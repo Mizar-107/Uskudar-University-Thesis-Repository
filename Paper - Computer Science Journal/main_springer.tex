@@ -75,11 +75,13 @@ The remainder of this paper is organized as follows: Sect.~\ref{sec:related} rev
 \section{Related Work}\label{sec:related}
 %%=============================================================================
 
+This section reviews the relevant literature in three key areas that form the foundation of our work. We first examine the evolution of YOLO object detectors, tracing the architectural innovations that have made real-time detection possible. We then survey maritime object detection approaches, highlighting the unique challenges of vessel detection in complex waterway environments. Finally, we discuss transfer learning techniques that enable effective domain adaptation with limited training data.
+
 \subsection{Evolution of YOLO Object Detectors}\label{subsec:yolo-evolution}
 
-The YOLO (You Only Look Once) paradigm, introduced by Redmon et al.~\cite{redmon2016yolo}, revolutionized real-time object detection by framing detection as a single regression problem. Unlike two-stage detectors such as R-CNN variants that first propose regions and then classify them, YOLO processes the entire image in one forward pass, enabling real-time inference speeds.
+The YOLO (You Only Look Once) paradigm, introduced by Redmon et al.~\cite{redmon2016yolo}, revolutionized real-time object detection by framing detection as a single regression problem. Unlike two-stage detectors such as R-CNN~\cite{girshick2014rcnn} and Faster R-CNN~\cite{ren2015fasterrcnn} that first propose regions and then classify them, YOLO processes the entire image in one forward pass, enabling real-time inference speeds. This single-stage approach was also adopted by SSD~\cite{liu2016ssd}, which introduced multi-scale feature maps for detecting objects at different sizes.
 
-Subsequent versions brought substantial improvements: YOLOv2~\cite{redmon2017yolo9000} introduced batch normalization and anchor boxes; YOLOv3~\cite{redmon2018yolov3} added multi-scale predictions; and YOLOv4~\cite{bochkovskiy2020yolov4} incorporated numerous architectural innovations including CSPDarknet backbone, SPP (Spatial Pyramid Pooling), and PANet path aggregation.
+Subsequent versions brought substantial improvements: YOLOv2~\cite{redmon2017yolo9000} introduced batch normalization and anchor boxes; YOLOv3~\cite{redmon2018yolov3} added multi-scale predictions; YOLOv4~\cite{bochkovskiy2020yolov4} incorporated numerous architectural innovations including CSPDarknet backbone, SPP (Spatial Pyramid Pooling), and PANet path aggregation; and YOLOv7~\cite{wang2023yolov7} introduced trainable bag-of-freebies techniques that further pushed the accuracy-speed trade-off frontier.
 
 The Ultralytics team has continued YOLO development with YOLOv5 through YOLO11~\cite{ultralytics2024yolo11}, introducing improvements in training strategies, augmentation pipelines, and architectural refinements. YOLO11, released in 2024, features C3k2 blocks for efficient feature extraction, C2PSA (Cross Stage Partial with Spatial Attention) modules, and SPPF (Spatial Pyramid Pooling Fast) for multi-scale feature aggregation. The model family includes variants from nano (n) to extra-large (x), with the small (s) variant offering 9.4 million parameters and 21.5 GFLOPs---suitable for edge deployment scenarios common in maritime surveillance.
 
@@ -89,11 +91,11 @@ Maritime vessel detection presents unique challenges compared to general object 
 
 Traditional maritime surveillance relied on radar and Automatic Identification System (AIS) transponders. However, AIS requires vessel cooperation and smaller vessels often lack transponders. Camera-based detection complements these systems by providing visual verification and detecting non-cooperative vessels.
 
-Recent work has applied deep learning to maritime detection. Shao et al.~\cite{shao2018seaships} introduced the SeaShips dataset and demonstrated CNN-based detection for coastal surveillance. The Singapore Maritime Dataset~\cite{prasad2017video} provided benchmark data for near-shore vessel detection. However, these datasets capture different maritime environments than the Bosphorus, with its unique combination of urban shoreline, bridge infrastructure, and distinctive vessel types.
+Recent work has applied deep learning to maritime detection. Shao et al.~\cite{shao2018seaships} introduced the SeaShips dataset and demonstrated CNN-based detection for coastal surveillance. The Singapore Maritime Dataset~\cite{prasad2017video} provided benchmark data for near-shore vessel detection. Chen et al.~\cite{chen2020ship} proposed attention-enhanced YOLO architectures for ship detection in remote sensing imagery, while Liu et al.~\cite{liu2021abcnet} demonstrated improved YOLOv5 variants for SAR-based ship detection. However, these datasets and approaches capture different maritime environments than the Bosphorus, with its unique combination of urban shoreline, bridge infrastructure, and distinctive vessel types.
 
 \subsection{Transfer Learning for Domain Adaptation}\label{subsec:transfer-learning}
 
-Transfer learning leverages knowledge from source domains (e.g., COCO with 80 classes) to improve performance on target domains (e.g., Bosphorus maritime vessels). Pretrained weights provide effective feature representations that can be fine-tuned with limited domain-specific data~\cite{pan2010survey}.
+Transfer learning leverages knowledge from source domains (e.g., COCO with 80 classes) to improve performance on target domains (e.g., Bosphorus maritime vessels). Pretrained weights provide effective feature representations that can be fine-tuned with limited domain-specific data~\cite{pan2010survey, weiss2016survey}. Recent comprehensive surveys~\cite{zhuang2020comprehensive} have categorized transfer learning approaches and demonstrated their effectiveness across diverse computer vision tasks. Deep residual networks~\cite{he2016resnet} have proven particularly amenable to transfer learning due to their ability to learn hierarchical feature representations.
 
 For object detection, fine-tuning typically involves: (1) initializing with pretrained weights, (2) replacing the classification head for new classes, and (3) training on domain-specific data with a reduced learning rate. This approach requires significantly less data than training from scratch while achieving superior performance.
 
@@ -102,6 +104,8 @@ The effectiveness of transfer learning depends on the similarity between source 
 %%=============================================================================
 \section{Methodology}\label{sec:methodology}
 %%=============================================================================
+
+This section describes our experimental methodology for evaluating YOLO models on Bosphorus maritime vessel detection. We detail the dataset characteristics, model architecture selection rationale, training configuration, and evaluation framework used to ensure fair and reproducible comparisons between vanilla and fine-tuned models.
 
 \subsection{Dataset}\label{subsec:dataset}
 
@@ -214,6 +218,8 @@ Evaluation metrics included: precision (TP / (TP + FP)), recall (TP / (TP + FN))
 \section{Experimental Results}\label{sec:results}
 %%=============================================================================
 
+This section presents our experimental findings comparing vanilla COCO-pretrained models against our fine-tuned YOLO11s on Bosphorus maritime imagery. We report overall detection metrics, analyze localization quality and inference speed, examine per-image performance patterns, and provide visualizations that highlight the dramatic performance gap between approaches.
+
 \subsection{Overall Performance Comparison}\label{subsec:overall-performance}
 
 Table~\ref{tab:results} presents the primary experimental results across all five model configurations on the 60-image test set containing 321 ground truth vessel instances.
@@ -299,6 +305,8 @@ The visualization emphasizes the order-of-magnitude gap between vanilla and fine
 %%=============================================================================
 \section{Discussion}\label{sec:discussion}
 %%=============================================================================
+
+This section analyzes the factors underlying the substantial performance gap between vanilla and fine-tuned models, examines our design choices including input resolution trade-offs, addresses potential concerns about comparison fairness, and acknowledges limitations that constrain the generalizability of our findings.
 
 \subsection{Why Fine-tuning Helps Dramatically}\label{subsec:why-finetuning}
 
