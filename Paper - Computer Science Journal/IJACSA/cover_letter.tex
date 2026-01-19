@@ -1,0 +1,56 @@
+\documentclass[11pt]{letter}
+\usepackage[margin=1in]{geometry}
+\usepackage{times}
+\usepackage{hyperref}
+
+\signature{Recep Ertu\u{g}rul Ek\c{s}i \\ Rowanda D. Ahmed \\ \"Usk\"udar University, Istanbul, Turkey}
+\address{Department of Computer Engineering \\ \"Usk\"udar University \\ Istanbul, Turkey \\ \texttt{recepertugrul.eksi@st.uskudar.edu.tr}}
+
+\begin{document}
+
+\begin{letter}{Editor-in-Chief \\ International Journal of Advanced Computer Science and Applications (IJACSA) \\ The Science and Information Organization}
+
+\opening{Dear Editor,}
+
+We are pleased to submit our manuscript entitled \textbf{``Fine-tuned YOLO11 for Maritime Vessel Detection in the Bosphorus Strait: A Comparative Study''} for consideration for publication in the International Journal of Advanced Computer Science and Applications (IJACSA).
+
+\textbf{Research Domain:} Computer Vision, Deep Learning, Object Detection, Maritime Surveillance
+
+\textbf{Summary:}
+
+This paper addresses the critical challenge of automated maritime vessel detection in the Bosphorus Strait, one of the world's busiest and most strategically important waterways with over 40,000 vessel transits annually. We present a comprehensive comparative study of YOLO-based object detection models for this domain-specific application.
+
+\textbf{Key Contributions:}
+
+\begin{enumerate}
+    \item \textbf{Novel Evaluation:} We provide the first documented evaluation of YOLO11 models for Bosphorus maritime vessel detection, demonstrating that vanilla COCO-pretrained models achieve only 1--11\% recall on domain-specific imagery.
+
+    \item \textbf{Significant Performance Improvement:} Our fine-tuned YOLO11s model achieves 87.54\% recall with 80.06\% precision (F1=0.836), representing an 8$\times$ improvement over the best vanilla model.
+
+    \item \textbf{Practical Insights:} We demonstrate that domain-specific fine-tuning is essential---not optional---for maritime surveillance applications, with training requiring only 581 images and 12.4 minutes on consumer GPU hardware.
+
+    \item \textbf{Real-time Capability:} The fine-tuned model maintains real-time inference speeds (30+ FPS) despite using higher resolution input (1088$\times$1088 vs standard 640$\times$640).
+\end{enumerate}
+
+\textbf{Relevance to IJACSA:}
+
+This work aligns well with IJACSA's scope in advanced computer science applications. The research combines state-of-the-art deep learning techniques (YOLO11, transfer learning) with a practical, safety-critical application domain (maritime surveillance). Our findings have immediate practical implications for maritime traffic management, collision avoidance systems, and environmental monitoring in busy waterways worldwide.
+
+\textbf{Declaration:}
+
+\begin{itemize}
+    \item This manuscript is original and has not been published elsewhere.
+    \item The manuscript is not under consideration by any other journal.
+    \item All authors have approved the manuscript and agree with its submission to IJACSA.
+    \item The dataset used (bogaz\_v\_1) is publicly available under CC BY 4.0 license.
+    \item There are no conflicts of interest to declare.
+\end{itemize}
+
+We believe this work makes a significant contribution to the field of computer vision applications for maritime surveillance and would be of great interest to IJACSA readers.
+
+Thank you for considering our submission. We look forward to your response.
+
+\closing{Sincerely,}
+
+\end{letter}
+\end{document}

@@ -1,0 +1,430 @@
+\documentclass[10pt,twocolumn]{article}
+
+% Page layout
+\usepackage[a4paper,margin=0.75in]{geometry}
+
+% Essential packages
+\usepackage{times}
+\usepackage[pdftex]{graphicx}
+\graphicspath{{./figures/}}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{cite}
+\usepackage{caption}
+
+% Better table column types
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
+
+% Title formatting
+\usepackage{titlesec}
+\titleformat{\section}{\normalfont\large\bfseries}{\Roman{section}.}{0.5em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries}{\Alph{subsection}.}{0.5em}{}
+
+% Reduce spacing
+\setlength{\parskip}{0pt}
+\setlength{\parsep}{0pt}
+\setlength{\headsep}{0pt}
+\setlength{\topskip}{0pt}
+\setlength{\topsep}{0pt}
+\setlength{\partopsep}{0pt}
+
+\begin{document}
+
+\title{\LARGE \bf Fine-tuned YOLO11 for Maritime Vessel Detection in the Bosphorus Strait: A Comparative Study}
+
+% ANONYMOUS VERSION FOR DOUBLE-BLIND REVIEW
+\author{
+\begin{tabular}{c}
+\textit{Anonymous Author(s)}\\
+\small \textit{Affiliation withheld for review}
+\end{tabular}
+}
+
+\date{}
+
+\maketitle
+
+\begin{abstract}
+Maritime vessel detection in the Bosphorus Strait is critical for traffic management, safety, and environmental monitoring. As one of the world's busiest waterways, the strait handles over 40,000 vessels annually, necessitating robust automated surveillance systems. However, general-purpose object detection models trained on standard datasets struggle with domain-specific maritime imagery due to unique lighting conditions, vessel types, and background complexity. This paper presents a fine-tuned YOLO11s model specifically trained on Bosphorus maritime imagery and provides a comprehensive comparison against vanilla YOLO models (YOLOv8n, YOLOv8s, YOLO11n, YOLO11s). Using transfer learning with a domain-specific dataset of 581 training images, optimized input resolution (1088$\times$1088), and AdamW optimizer with cosine learning rate scheduling, our fine-tuned model achieves 87.54\% recall and 80.06\% precision (F1=0.836) on a test set of 60 images containing 321 vessel instances. In contrast, vanilla COCO-pretrained models achieve near 0\% recall on the same test set, with the best-performing vanilla model (YOLO11s) detecting only 10.90\% of vessels. The fine-tuned model maintains an average IoU of 0.864 for matched detections while achieving real-time inference speeds of approximately 33ms per image. These results demonstrate that domain-specific fine-tuning is essential, not optional, for maritime vessel detection applications.
+\end{abstract}
+
+\noindent\textbf{Keywords:} YOLO, ship detection, maritime surveillance, transfer learning, object detection, Bosphorus Strait, deep learning
+
+\section{Introduction}
+
+The Bosphorus Strait, connecting the Black Sea to the Sea of Marmara and ultimately the Mediterranean, stands as one of the world's most strategically important and congested maritime corridors. With over 40,000 vessels transiting annually, including oil tankers, cargo ships, passenger ferries, and fishing boats, the strait presents unique challenges for maritime traffic management and safety monitoring~\cite{turkishstraits2023}. The dense traffic, combined with the narrow geography of the strait (minimum width of 700 meters), residential areas along both shores, and the presence of critical infrastructure such as the Bosphorus Bridge and Fatih Sultan Mehmet Bridge, necessitates robust automated vessel detection systems.
+
+Automated maritime surveillance serves multiple critical functions: traffic flow optimization to prevent congestion at narrow passages, collision avoidance through early vessel detection, environmental monitoring for oil spills and pollution, and support for search and rescue operations. Traditional surveillance methods relying on human operators monitoring camera feeds are limited by attention fatigue, scalability issues, and response latency. Deep learning-based object detection offers a promising solution for continuous, automated vessel monitoring.
+
+The You Only Look Once (YOLO) family of object detectors has emerged as the state-of-the-art approach for real-time object detection, offering an attractive balance between accuracy and speed~\cite{redmon2016yolo}. Modern YOLO variants, including YOLOv8 and YOLO11 from Ultralytics~\cite{ultralytics2024yolo11}, come pretrained on the Microsoft COCO dataset~\cite{lin2014coco}, which includes a ``boat'' class. However, as this study demonstrates, these generic pretrained models fail catastrophically when applied directly to Bosphorus maritime imagery. The COCO ``boat'' class predominantly features recreational vessels, sailboats, and kayaks in varied contexts---fundamentally different from the cargo ships, tankers, and ferries that dominate Bosphorus traffic.
+
+This paper addresses three key research questions: (1) How do vanilla COCO-pretrained YOLO models perform on Bosphorus maritime vessel detection? (2) Can domain-specific fine-tuning significantly improve detection performance? (3) What are the trade-offs between detection accuracy and inference speed for real-time maritime surveillance applications?
+
+Our contributions are as follows:
+\begin{itemize}
+    \item We present the first documented evaluation of YOLO11 models for Bosphorus maritime vessel detection, demonstrating that vanilla COCO-pretrained models achieve only 1--11\% recall.
+    \item We develop a fine-tuned YOLO11s model that achieves 87.54\% recall with 80.06\% precision, representing an order-of-magnitude improvement over vanilla models.
+    \item We provide a comprehensive comparison of five model configurations (four vanilla, one fine-tuned) on 60 test images containing 321 vessel instances.
+    \item We release our evaluation methodology and results to support reproducible maritime detection research.
+\end{itemize}
+
+The remainder of this paper is organized as follows: Section~II reviews related work in YOLO development and maritime object detection. Section~III details our methodology, including dataset characteristics, model architecture, and training configuration. Section~IV presents experimental results and analysis. Section~V discusses findings and limitations, and Section~VI concludes with future research directions.
+
+\section{Related Work}
+
+\vspace{0.8em}
+
+\subsection{Evolution of YOLO Object Detectors}
+
+The YOLO (You Only Look Once) paradigm, introduced by Redmon et al.~\cite{redmon2016yolo}, revolutionized real-time object detection by framing detection as a single regression problem. Unlike two-stage detectors such as Faster R-CNN~\cite{ren2015faster} that first propose regions and then classify them, YOLO processes the entire image in one forward pass, enabling real-time inference speeds.
+
+Subsequent versions brought substantial improvements: YOLOv2~\cite{redmon2017yolo9000} introduced batch normalization and anchor boxes; YOLOv3~\cite{redmon2018yolov3} added multi-scale predictions; and YOLOv4~\cite{bochkovskiy2020yolov4} incorporated numerous architectural innovations including CSPDarknet backbone, SPP (Spatial Pyramid Pooling), and PANet path aggregation.
+
+The Ultralytics team has continued YOLO development with YOLOv5~\cite{jocher2022yolov5} through YOLO11~\cite{ultralytics2024yolo11}, introducing improvements in training strategies, augmentation pipelines, and architectural refinements. Concurrent developments include YOLOv6~\cite{li2022yolov6} optimized for industrial deployment and YOLOv7~\cite{wang2023yolov7} which introduced efficient layer aggregation networks. YOLO11, released in 2024, features C3k2 blocks for efficient feature extraction, C2PSA (Cross Stage Partial with Spatial Attention) modules, and SPPF (Spatial Pyramid Pooling Fast) for multi-scale feature aggregation. The model family includes variants from nano (n) to extra-large (x), with the small (s) variant offering 9.4 million parameters and 21.5 GFLOPs---suitable for edge deployment scenarios common in maritime surveillance.
+
+\subsection{Maritime Object Detection}
+
+Maritime vessel detection presents unique challenges compared to general object detection. Prasad et al.~\cite{prasad2017video} identified key difficulties including variable lighting conditions (sunrise, sunset, fog), water surface reflections, vessel occlusion, and the wide range of scales from nearby ferries to distant cargo ships. Weather conditions significantly impact detection performance, with fog, rain, and waves introducing noise and reducing visibility.
+
+Traditional maritime surveillance relied on radar and Automatic Identification System (AIS) transponders. However, AIS requires vessel cooperation and smaller vessels often lack transponders. Camera-based detection complements these systems by providing visual verification and detecting non-cooperative vessels.
+
+Recent work has applied deep learning to maritime detection. Shao et al.~\cite{shao2018seaships} introduced the SeaShips dataset and demonstrated CNN-based detection for coastal surveillance. The Singapore Maritime Dataset~\cite{prasad2017video} provided benchmark data for near-shore vessel detection. More recent approaches have incorporated attention mechanisms~\cite{chen2020survey} and improved YOLO architectures~\cite{huang2021survey} for enhanced ship detection in various maritime environments. However, these datasets capture different maritime environments than the Bosphorus, with its unique combination of urban shoreline, bridge infrastructure, and distinctive vessel types.
+
+\subsection{Transfer Learning for Domain Adaptation}
+
+Transfer learning leverages knowledge from source domains (e.g., COCO with 80 classes) to improve performance on target domains (e.g., Bosphorus maritime vessels). Pretrained weights provide effective feature representations that can be fine-tuned with limited domain-specific data~\cite{pan2010survey}.
+
+For object detection, fine-tuning typically involves: (1) initializing with pretrained weights, (2) replacing the classification head for new classes, and (3) training on domain-specific data with a reduced learning rate. This approach requires significantly less data than training from scratch while achieving superior performance.
+
+The effectiveness of transfer learning depends on the similarity between source and target domains. COCO's ``boat'' class provides a reasonable initialization for maritime detection, but the domain gap---recreational boats versus commercial vessels, varied backgrounds versus consistent maritime scenes---necessitates fine-tuning for optimal performance. Our work quantifies this domain gap by comparing vanilla and fine-tuned models on identical test data.
+
+\section{Methodology}
+
+\vspace{0.8em}
+
+\subsection{Dataset}
+
+We utilized a publicly available Bosphorus maritime dataset from Roboflow Universe~\cite{roboflow2024bogaz}. The dataset captures maritime traffic in the Bosphorus Strait with images acquired from shore-based vantage points. Table~\ref{tab:dataset} summarizes the dataset characteristics.
+
+\begin{table}[!ht]
+\centering
+\caption{Dataset Statistics for the Bosphorus Maritime Dataset}
+\label{tab:dataset}
+\begin{tabular}{lc}
+\toprule
+\textbf{Property} & \textbf{Value} \\
+\midrule
+Source & Roboflow Universe \\
+Classes & 1 (ships) \\
+Training images & 581 \\
+Training instances & 3,321 bounding boxes \\
+Background images (train) & 5 \\
+Validation images & 218 \\
+Validation instances & 1,217 bounding boxes \\
+Background images (valid) & 2 \\
+License & CC BY 4.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The dataset contains a single class encompassing various vessel types including cargo ships, tankers, passenger ferries, fishing boats, and coast guard vessels. Annotations were provided in YOLO format with normalized bounding box coordinates. The original dataset included mixed bounding box and polygon annotations; during training, polygon annotations were automatically converted to bounding boxes.
+
+For evaluation, we sampled 60 images using a fixed random seed (42) to ensure reproducibility. These test images contain 321 ground truth vessel instances, providing a statistically meaningful evaluation set.
+
+\subsection{Model Architecture}
+
+We selected YOLO11s (small variant) as our base architecture for fine-tuning. The choice of the ``s'' variant over the more compact ``n'' (nano) variant was deliberate: with 9.4 million parameters compared to approximately 2.6 million for YOLO11n, the small variant provides substantially greater model capacity to capture the diversity of vessel appearances in Bosphorus imagery. This diversity encompasses multiple vessel types (cargo ships, tankers, ferries, fishing boats), a wide range of scales (from nearby ferries to distant cargo ships), and varying orientations and lighting conditions. As our experimental results confirm (Table~\ref{tab:results}), even the vanilla YOLO11s outperforms YOLO11n (10.90\% vs 2.18\% recall), suggesting that the additional capacity is beneficial for this domain. Table~\ref{tab:architecture} details the model specifications.
+
+\begin{table}[!ht]
+\centering
+\caption{YOLO11s Model Architecture Specifications}
+\label{tab:architecture}
+\begin{tabular}{lc}
+\toprule
+\textbf{Property} & \textbf{Value} \\
+\midrule
+Total layers & 181 (100 after fusion) \\
+Parameters & 9,428,179 (9.4M) \\
+GFLOPs & 21.5 (21.3 fused) \\
+Pretrained source & MS COCO dataset \\
+Detection scales & 3 (128, 256, 512 channels) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The architecture employs several key components: Conv layers with varying kernel sizes for hierarchical feature extraction building on ResNet principles~\cite{he2016deep}, C3k2 blocks combining cross-stage partial connections with efficient 3$\times$3 convolutions, SPPF (Spatial Pyramid Pooling Fast) for multi-scale feature aggregation, C2PSA modules incorporating spatial attention mechanisms, and a three-scale detection head inspired by Feature Pyramid Networks~\cite{lin2017feature} for objects at different sizes. The pretrained model was initialized with COCO weights, with 493 of 499 transferable items successfully loaded.
+
+\subsection{Training Configuration}
+
+Table~\ref{tab:training} presents the complete training configuration. We used Google Colab with an NVIDIA L4 GPU (22.7 GB memory) for training.
+
+\begin{table}[!ht]
+\centering
+\caption{Training Hyperparameters and Configuration}
+\label{tab:training}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Notes} \\
+\midrule
+Hardware & NVIDIA L4 & 22.7 GB VRAM \\
+Input resolution & 1088$\times$1088 & For 1080p source \\
+Batch size & 17 & Auto-computed \\
+Epochs & 50 & All completed \\
+Optimizer & AdamW & momentum=0.937 \\
+Learning rate & lr0=0.001 & Cosine decay \\
+Weight decay & 0.0005 & L2 regularization \\
+Warmup epochs & 3 & warmup\_bias\_lr=0.1 \\
+Early stopping & patience=10 & Not triggered \\
+Mixed precision & Enabled & AMP training \\
+Mosaic augmentation & Until epoch 40 & close\_mosaic=10 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The input resolution of 1088$\times$1088 was carefully selected based on both architectural constraints and source imagery characteristics. YOLO architectures require input dimensions divisible by 32 due to five successive downsampling stages with stride 2 in the backbone network ($2^5 = 32$). Our source imagery is 1920$\times$1080 (Full HD), and 1080 is not divisible by 32. The nearest compliant value is 1088 ($1088 = 34 \times 32$), which minimizes aspect ratio distortion compared to the default 640$\times$640 while preserving substantially more spatial detail. This resolution represents 2.89$\times$ more pixels than the standard 640$\times$640 YOLO input, significantly improving detection of small and distant vessels at the cost of modestly increased computation.
+
+Data augmentation included mosaic augmentation (combining four training images), random horizontal flipping (50\% probability), HSV color space adjustments (hue$\pm$0.015, saturation$\pm$0.7, value$\pm$0.4), and albumentations transforms (blur, median blur, grayscale conversion, CLAHE). Mosaic augmentation was disabled for the final 10 epochs to fine-tune on full-resolution images.
+
+Training completed in 0.207 hours (12.4 minutes) for 50 epochs. The model achieved best validation mAP50 of 0.840 and mAP50-95 of 0.627, with final validation precision of 0.788 and recall of 0.784.
+
+\subsection{Evaluation Framework}
+
+We compared five model configurations as detailed in Table~\ref{tab:models}. Vanilla models used default Ultralytics parameters to represent ``out-of-box'' performance that a practitioner would obtain without domain expertise. The fine-tuned model used its trained optimal parameters.
+
+\begin{table}[!ht]
+\centering
+\caption{Model Configurations for Comparative Evaluation}
+\label{tab:models}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Model} & \textbf{Weights} & \textbf{Input Size} & \textbf{Classes} \\
+\midrule
+YOLOv8n (vanilla) & yolov8n.pt & 640$\times$640 & 80 (COCO) \\
+YOLOv8s (vanilla) & yolov8s.pt & 640$\times$640 & 80 (COCO) \\
+YOLO11n (vanilla) & yolo11n.pt & 640$\times$640 & 80 (COCO) \\
+YOLO11s (vanilla) & yolo11s.pt & 640$\times$640 & 80 (COCO) \\
+YOLO11s (fine-tuned) & best.pt & 1088$\times$1088 & 1 (ships) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All models used a confidence threshold of 0.25. For vanilla models, we filtered predictions to the ``boat'' class (COCO class 8). Detection matching used IoU threshold of 0.5 (standard COCO criterion) with greedy assignment: each ground truth box was matched to the highest-IoU prediction exceeding the threshold, with each prediction matching at most one ground truth.
+
+Evaluation metrics included: precision (TP / (TP + FP)), recall (TP / (TP + FN)), F1 score (harmonic mean of precision and recall), average IoU of matched detections, and inference time per image.
+
+\section{Experimental Results}
+
+\vspace{0.8em}
+
+\subsection{Overall Performance Comparison}
+
+Table~\ref{tab:results} presents the primary experimental results across all five model configurations on the 60-image test set containing 321 ground truth vessel instances.
+
+\begin{table}[!ht]
+\centering
+\caption{Comparative Detection Performance on 60 Test Images (321 Ground Truth Vessels)}
+\label{tab:results}
+\begin{tabular}{lrrrrrrr}
+\toprule
+\textbf{Model} & \textbf{Det.} & \textbf{TP} & \textbf{FP} & \textbf{FN} & \textbf{Prec.} & \textbf{Rec.} & \textbf{F1} \\
+\midrule
+YOLOv8n & 21 & 4 & 17 & 317 & 19.1\% & 1.3\% & 2.3\% \\
+YOLOv8s & 40 & 21 & 19 & 300 & 52.5\% & 6.5\% & 11.6\% \\
+YOLO11n & 28 & 7 & 21 & 314 & 25.0\% & 2.2\% & 4.0\% \\
+YOLO11s & 75 & 35 & 40 & 286 & 46.7\% & 10.9\% & 17.7\% \\
+\textbf{Fine-tuned} & \textbf{351} & \textbf{281} & \textbf{70} & \textbf{40} & \textbf{80.1\%} & \textbf{87.5\%} & \textbf{83.6\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The results reveal a dramatic performance gap between vanilla and fine-tuned models. The fine-tuned YOLO11s achieves 87.54\% recall, detecting 281 of 321 vessels, while the best-performing vanilla model (YOLO11s) detects only 35 vessels (10.90\% recall). This represents an 8.0$\times$ improvement in recall through domain-specific fine-tuning.
+
+Precision follows a similar pattern: the fine-tuned model achieves 80.06\% precision compared to the vanilla models' range of 19--53\%. The F1 score of 83.63\% for the fine-tuned model demonstrates balanced precision-recall performance, compared to the best vanilla F1 of only 17.68\%.
+
+\subsection{Detection Quality Analysis}
+
+Table~\ref{tab:iou_time} presents localization accuracy (IoU) and inference speed metrics.
+
+\begin{table}[!ht]
+\centering
+\caption{Localization Accuracy and Inference Speed Comparison}
+\label{tab:iou_time}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Model} & \textbf{Avg. IoU (matched)} & \textbf{Avg. Time (ms)} \\
+\midrule
+YOLOv8n & 0.74 & 30.7 \\
+YOLOv8s & 0.74 & 30.7 \\
+YOLO11n & 0.75 & 31.1 \\
+YOLO11s & 0.78 & 32.1 \\
+Fine-tuned & \textbf{0.864} & 33.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The fine-tuned model achieves superior bounding box localization with an average IoU of 0.864 for matched detections, compared to 0.74--0.78 for vanilla models. This indicates that fine-tuning improves not only detection rate but also localization accuracy.
+
+Inference speed remains competitive despite the larger input resolution. The fine-tuned model processes images in approximately 33ms (1088$\times$1088) compared to 31ms for vanilla models (640$\times$640). The 2.89$\times$ increase in pixel count results in only a modest 7\% increase in inference time, demonstrating the efficiency of the YOLO11 architecture. Both configurations support real-time processing at 30+ FPS.
+
+\subsection{Per-Image Analysis}
+
+Analysis of individual image results reveals consistent patterns. Figure~\ref{fig:comparison} illustrates the detection performance across representative test images.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\columnwidth]{comparison_grid.png}
+\caption{Detection comparison across representative test images. Each row shows a different test image with detections from all five models. Green boxes indicate true positives, red boxes indicate false positives. The fine-tuned model consistently detects vessels that vanilla models miss entirely.}
+\label{fig:comparison}
+\end{figure}
+
+Several patterns emerge from per-image analysis:
+
+\textbf{Complete Vanilla Failure:} On 42 of 60 images (70\%), at least one vanilla model produced zero detections. On 18 images (30\%), all four vanilla models failed to detect any vessels despite ground truth counts of 3--9 ships per image.
+
+\textbf{Fine-tuned Robustness:} The fine-tuned model detected at least one vessel in 59 of 60 images (98.3\%), with complete detection (100\% recall) on 15 images.
+
+\textbf{False Positive Analysis:} The fine-tuned model's 70 false positives arise from several identifiable sources in dense maritime scenes. Shore structures constitute the dominant source: buildings, piers, and docks along the Bosphorus shoreline present rectangular shapes and high-contrast edges that resemble vessel superstructures. Overlapping vessels in crowded scenes create ambiguous boundaries. Large vessels spanning multiple scales may trigger multiple detections when different parts of the ship each match learned vessel features. In safety-critical maritime surveillance applications, such over-detection is generally preferable to missed vessels.
+
+\subsection{Performance Visualization}
+
+Figure~\ref{fig:charts} presents performance metrics in chart form for visual comparison across models.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\columnwidth]{comparison_charts.png}
+\caption{Performance comparison charts showing (left) precision, recall, and F1 scores, and (right) detection counts versus ground truth across all models.}
+\label{fig:charts}
+\end{figure}
+
+The visualization emphasizes the order-of-magnitude gap between vanilla and fine-tuned performance. While vanilla models cluster near zero recall, the fine-tuned model approaches the ground truth detection target.
+
+\section{Discussion}
+
+\vspace{0.8em}
+
+\subsection{Why Fine-tuning Helps Dramatically}
+
+The substantial performance gap between vanilla and fine-tuned models can be attributed to several factors:
+
+\textbf{Domain Shift:} The COCO ``boat'' class predominantly features recreational vessels (sailboats, kayaks, motorboats) in diverse contexts (lakes, rivers, marinas). Bosphorus traffic comprises commercial vessels (cargo ships, tankers, ferries) against consistent maritime backgrounds. This semantic gap prevents effective knowledge transfer without fine-tuning.
+
+\textbf{Background Adaptation:} The fine-tuned model learns Bosphorus-specific background patterns: characteristic water textures, shoreline buildings, bridge structures (Bosphorus Bridge, Fatih Sultan Mehmet Bridge), and typical sky conditions. Vanilla models, unfamiliar with these backgrounds, generate both false negatives and false positives.
+
+\textbf{Scale Adaptation:} Maritime vessels in the Bosphorus appear at various scales depending on distance (20m to 2km from camera). The higher input resolution (1088$\times$1088) preserves details of distant vessels that would be lost at 640$\times$640. Fine-tuning at this resolution teaches the model to detect vessels across the full scale range.
+
+\textbf{Single-Class Focus:} The fine-tuned model is optimized for a single class (ships) rather than 80 COCO classes. This specialization allows the model to dedicate full capacity to distinguishing vessels from maritime backgrounds without competition from irrelevant classes.
+
+\subsection{Input Resolution Analysis}
+
+The choice of 1088$\times$1088 input resolution represents a deliberate trade-off. With 2.89$\times$ more pixels than the standard 640$\times$640, this resolution:
+
+\begin{itemize}
+    \item Preserves details of distant/small vessels that would otherwise be lost
+    \item Maintains aspect ratio compatibility with 1920$\times$1080 source imagery
+    \item Incurs only modest speed penalty (approximately 7\% slower) due to efficient YOLO architecture
+    \item Enables detection of vessels at greater distances, critical for early warning
+\end{itemize}
+
+\subsection{Limitations}
+
+Several limitations constrain the generalizability of our findings:
+
+\textbf{Test Set Size:} While 60 images with 321 vessel instances provide statistically meaningful results, a larger test set would strengthen conclusions about edge cases.
+
+\textbf{Single Class:} Our model detects ``ships'' as a unified category without distinguishing vessel types. Multi-class detection would provide more actionable information.
+
+\textbf{Daytime Conditions:} The dataset and evaluation focus on daytime imagery. Night-time and thermal imaging performance remain untested.
+
+\textbf{Weather Variability:} Test images represent predominantly clear conditions. Performance under fog, rain, and rough sea states requires further evaluation.
+
+\textbf{Geographic Specificity:} The model is trained and evaluated exclusively on Bosphorus imagery. Generalization to other waterways is unknown.
+
+\section{Conclusion}
+
+This paper demonstrates that domain-specific fine-tuning is essential for maritime vessel detection in the Bosphorus Strait. Our comprehensive evaluation of five YOLO model configurations reveals that vanilla COCO-pretrained models fail catastrophically on Bosphorus maritime imagery, achieving only 1--11\% recall despite including a ``boat'' class. In contrast, our fine-tuned YOLO11s model achieves 87.54\% recall with 80.06\% precision (F1=0.836), representing an order-of-magnitude improvement.
+
+Key findings include:
+\begin{itemize}
+    \item Vanilla YOLO models detect 1--11\% of Bosphorus vessels, demonstrating severe domain shift from COCO training data.
+    \item Fine-tuning with 581 domain-specific images for 50 epochs (12.4 minutes on NVIDIA L4) transforms unusable models into production-ready solutions.
+    \item Higher input resolution (1088$\times$1088) improves small vessel detection with minimal speed penalty, maintaining real-time capability at 30+ FPS.
+    \item The fine-tuned model achieves superior localization (0.864 average IoU) in addition to higher detection rates.
+\end{itemize}
+
+The practical implication is clear: practitioners deploying vessel detection for maritime surveillance must invest in domain-specific fine-tuning. Off-the-shelf pretrained models cannot reliably detect vessels in specialized maritime environments.
+
+Future work will extend this research in several directions: multi-class vessel classification, night-time and thermal imaging adaptation, video-based tracking with temporal consistency, edge deployment optimization, and evaluation of generalization to other maritime corridors. Integration with AIS data for vessel identification verification presents an additional avenue for comprehensive maritime surveillance systems.
+
+% ACKNOWLEDGMENT REMOVED FOR ANONYMOUS REVIEW
+% \section*{Acknowledgment}
+% Acknowledgments will be added after review.
+
+\begin{thebibliography}{99}
+
+\bibitem{turkishstraits2023}
+Turkish Directorate General of Coastal Safety, ``Turkish Straits Vessel Traffic Statistics,'' 2023. [Online]. Available: https://www.kiyiemniyeti.gov.tr
+
+\bibitem{redmon2016yolo}
+J. Redmon, S. Divvala, R. Girshick, and A. Farhadi, ``You Only Look Once: Unified, Real-Time Object Detection,'' in \textit{Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2016, pp. 779--788.
+
+\bibitem{ultralytics2024yolo11}
+G. Jocher, A. Chaurasia, and J. Qiu, ``Ultralytics YOLO11,'' GitHub, 2024. [Online]. Available: https://github.com/ultralytics/ultralytics
+
+\bibitem{lin2014coco}
+T.-Y. Lin \textit{et al.}, ``Microsoft COCO: Common Objects in Context,'' in \textit{Eur. Conf. Comput. Vis. (ECCV)}, 2014, pp. 740--755.
+
+\bibitem{redmon2017yolo9000}
+J. Redmon and A. Farhadi, ``YOLO9000: Better, Faster, Stronger,'' in \textit{Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2017, pp. 7263--7271.
+
+\bibitem{redmon2018yolov3}
+J. Redmon and A. Farhadi, ``YOLOv3: An Incremental Improvement,'' \textit{arXiv preprint arXiv:1804.02767}, 2018.
+
+\bibitem{bochkovskiy2020yolov4}
+A. Bochkovskiy, C.-Y. Wang, and H.-Y. M. Liao, ``YOLOv4: Optimal Speed and Accuracy of Object Detection,'' \textit{arXiv preprint arXiv:2004.10934}, 2020.
+
+\bibitem{jocher2022yolov5}
+G. Jocher \textit{et al.}, ``YOLOv5 by Ultralytics,'' GitHub, 2022. [Online]. Available: https://github.com/ultralytics/yolov5
+
+\bibitem{li2022yolov6}
+C. Li \textit{et al.}, ``YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications,'' \textit{arXiv preprint arXiv:2209.02976}, 2022.
+
+\bibitem{wang2023yolov7}
+C.-Y. Wang, A. Bochkovskiy, and H.-Y. M. Liao, ``YOLOv7: Trainable Bag-of-Freebies Sets New State-of-the-Art for Real-Time Object Detectors,'' in \textit{Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2023, pp. 7464--7475.
+
+\bibitem{ren2015faster}
+S. Ren, K. He, R. Girshick, and J. Sun, ``Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks,'' in \textit{Advances in Neural Information Processing Systems (NeurIPS)}, vol. 28, 2015, pp. 91--99.
+
+\bibitem{he2016deep}
+K. He, X. Zhang, S. Ren, and J. Sun, ``Deep Residual Learning for Image Recognition,'' in \textit{Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2016, pp. 770--778.
+
+\bibitem{lin2017feature}
+T.-Y. Lin, P. Doll{\'a}r, R. Girshick, K. He, B. Hariharan, and S. Belongie, ``Feature Pyramid Networks for Object Detection,'' in \textit{Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2017, pp. 2117--2125.
+
+\bibitem{prasad2017video}
+D. K. Prasad, D. Rajan, L. Rachmawati, E. Rajabally, and C. Quek, ``Video Processing from Electro-Optical Sensors for Object Detection and Tracking in a Maritime Environment: A Survey,'' \textit{IEEE Trans. Intell. Transp. Syst.}, vol. 18, no. 8, pp. 1993--2016, 2017.
+
+\bibitem{shao2018seaships}
+Z. Shao, W. Wu, Z. Wang, W. Du, and C. Li, ``SeaShips: A Large-Scale Precisely Annotated Dataset for Ship Detection,'' \textit{IEEE Trans. Multimedia}, vol. 20, no. 10, pp. 2593--2604, 2018.
+
+\bibitem{chen2020survey}
+L. Chen, W. Shi, and D. Deng, ``Improved YOLOv3 Based on Attention Mechanism for Fast and Accurate Ship Detection in Optical Remote Sensing Images,'' \textit{Remote Sensing}, vol. 13, no. 4, p. 660, 2021.
+
+\bibitem{huang2021survey}
+H. Huang, D. Sun, R. Wang, C. Zhu, and B. Liu, ``Ship Target Detection Based on Improved YOLO Network,'' \textit{Mathematical Problems in Engineering}, vol. 2020, Article ID 6402149, 2020.
+
+\bibitem{pan2010survey}
+S. J. Pan and Q. Yang, ``A Survey on Transfer Learning,'' \textit{IEEE Trans. Knowl. Data Eng.}, vol. 22, no. 10, pp. 1345--1359, 2010.
+
+\bibitem{roboflow2024bogaz}
+Bosphorus Vision Project, ``Bosphorus Maritime Dataset,'' Roboflow Universe, 2024. [Online]. Available: https://universe.roboflow.com
+
+\end{thebibliography}
+
+\end{document}
