@@ -1,0 +1,26 @@
+{
+  "splits": {
+    "train": {
+      "images": 521,
+      "boxes": 3000
+    },
+    "valid": {
+      "images": 218,
+      "boxes": 1217
+    },
+    "test": {
+      "images": 60,
+      "boxes": 321
+    }
+  },
+  "training_pool_images": 739,
+  "training_pool_boxes": 4217,
+  "total_images_incl_test": 799,
+  "total_boxes_incl_test": 4538,
+  "boxes_per_image_mean": 5.706359945872801,
+  "boxes_per_image_median": 5.0,
+  "boxes_per_image_max": 41,
+  "box_area_pct_median": 0.02525532859680277,
+  "box_area_pct_mean": 0.08652489702485304,
+  "aspect_ratio_median": 1.8888888888888886
+}
