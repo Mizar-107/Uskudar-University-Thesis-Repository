@@ -1,0 +1,502 @@
+%% Chapter 2: Literature Review
+%% Target: 12-15 pages
+
+\chapter{Literature Review}
+\label{ch:literature_review}
+
+This chapter provides a comprehensive review of the literature relevant to maritime vessel detection using deep learning. We begin with an overview of object detection evolution, followed by a detailed examination of the YOLO family of detectors, maritime-specific detection challenges and solutions, and finally transfer learning principles that enable domain adaptation.
+
+%% ============================================================================
+\section{Evolution of Object Detection}
+\label{sec:detection_evolution}
+%% ============================================================================
+
+Object detection---the task of localizing and classifying objects within images---has undergone a transformative evolution over the past decade. This section traces the development from traditional computer vision methods to modern deep learning approaches.
+
+\subsection{Traditional Methods}
+
+Before the deep learning revolution, object detection relied primarily on hand-crafted features combined with classical machine learning classifiers.
+
+\subsubsection{Histogram of Oriented Gradients (HOG)}
+
+The Histogram of Oriented Gradients (HOG) descriptor, introduced by Dalal and Triggs for pedestrian detection, represents images through the distribution of gradient orientations in localized portions of the image. HOG features capture edge and shape information effectively but require careful parameter tuning and struggle with significant appearance variations, occlusions, and viewpoint changes.
+
+\subsubsection{Deformable Parts Model (DPM)}
+
+The Deformable Parts Model extended HOG by representing objects as collections of parts with spatial relationships. DPM achieved state-of-the-art performance on the PASCAL VOC benchmark and dominated object detection until the advent of deep learning. However, DPM's computational cost and sensitivity to part configurations limited its applicability to real-time scenarios.
+
+\subsubsection{Sliding Window Approaches}
+
+Traditional detection frameworks employed sliding window strategies, exhaustively evaluating classifiers at multiple positions and scales across the image. This brute-force approach, while thorough, incurs substantial computational overhead and struggles to achieve real-time performance even with efficient classifiers.
+
+\subsubsection{Limitations Driving Deep Learning Adoption}
+
+Traditional methods faced fundamental limitations that motivated the transition to deep learning:
+\begin{itemize}
+    \item \textbf{Feature Engineering Burden:} Hand-crafted features require domain expertise and may not capture all relevant visual patterns
+    \item \textbf{Limited Generalization:} Features designed for specific domains (e.g., pedestrians) may not transfer to other object categories
+    \item \textbf{Scalability Issues:} Performance degraded with increasing numbers of object classes
+    \item \textbf{Computational Constraints:} Real-time detection remained challenging with sliding window approaches
+\end{itemize}
+
+\subsection{Two-Stage Detectors}
+
+The introduction of deep learning to object detection began with two-stage detectors that decompose detection into region proposal and classification phases.
+
+\subsubsection{R-CNN: Region-Based Convolutional Neural Networks}
+
+Girshick et al.~\citep{girshick2014rcnn} introduced R-CNN (Regions with CNN features), which dramatically improved detection accuracy by leveraging deep convolutional networks for feature extraction. R-CNN operates in three stages:
+\begin{enumerate}
+    \item Generate approximately 2,000 region proposals using selective search
+    \item Extract fixed-size feature vectors from each proposal using a CNN (typically AlexNet or VGG)
+    \item Classify each region using SVM classifiers and refine bounding boxes via regression
+\end{enumerate}
+
+While R-CNN achieved significant accuracy improvements over traditional methods, its multi-stage pipeline and redundant CNN computations for overlapping proposals resulted in slow inference (approximately 47 seconds per image), precluding real-time applications.
+
+\subsubsection{Fast R-CNN}
+
+Girshick~\citep{girshick2015fastrcnn} addressed R-CNN's computational inefficiency with Fast R-CNN, which processes the entire image through the CNN once and extracts features for each proposal from the resulting feature map using ROI (Region of Interest) pooling. This architectural change reduced inference time significantly while maintaining accuracy. Fast R-CNN also unified the classification and bounding box regression into a single multi-task loss, simplifying training.
+
+\subsubsection{Faster R-CNN and Region Proposal Networks}
+
+Ren et al.~\citep{ren2015fasterrcnn} completed the evolution to end-to-end trainable detection with Faster R-CNN, which replaced selective search with a Region Proposal Network (RPN). The RPN shares convolutional features with the detection network and learns to propose regions likely to contain objects. This integration:
+\begin{itemize}
+    \item Eliminated the computational bottleneck of selective search
+    \item Enabled end-to-end training of the complete detection pipeline
+    \item Achieved near real-time speeds (5 FPS) while maintaining accuracy
+\end{itemize}
+
+Faster R-CNN established the two-stage detection paradigm that balanced accuracy and efficiency, influencing subsequent architectures.
+
+\subsubsection{Feature Pyramid Networks}
+
+Lin et al.~\citep{lin2017fpn} introduced Feature Pyramid Networks (FPN), which construct a multi-scale feature pyramid from a single-scale input by combining low-resolution, semantically strong features with high-resolution, semantically weak features through top-down pathways and lateral connections. FPN addresses the challenge of detecting objects at multiple scales---particularly small objects---and has become a standard component in modern detection architectures.
+
+\subsection{One-Stage Detectors}
+
+While two-stage detectors achieved high accuracy, their sequential region proposal and classification phases limited inference speed. One-stage detectors emerged as an alternative paradigm, directly predicting object locations and classes in a single forward pass.
+
+\subsubsection{SSD: Single Shot MultiBox Detector}
+
+Liu et al.~\citep{liu2016ssd} introduced SSD (Single Shot MultiBox Detector), which predicts objects at multiple feature map scales without explicit region proposal generation. Key innovations include:
+\begin{itemize}
+    \item \textbf{Multi-scale Feature Maps:} Detection occurs at multiple layers with different receptive fields, enabling detection of objects at various sizes
+    \item \textbf{Default Boxes:} Predefined anchor boxes at each feature map location, with network predicting offsets and class probabilities
+    \item \textbf{End-to-End Training:} Single-stage training with multi-task loss combining localization and classification
+\end{itemize}
+
+SSD achieved real-time speeds (59 FPS at 300×300 resolution) while approaching two-stage detector accuracy, demonstrating the viability of one-stage approaches.
+
+\subsubsection{RetinaNet and Focal Loss}
+
+Lin et al.~\citep{lin2017retinanet} addressed the class imbalance problem that historically limited one-stage detector accuracy. During training, the vast majority of candidate locations are background (easy negatives), which can overwhelm the loss and degrade learning of hard examples.
+
+RetinaNet introduced Focal Loss, which down-weights the contribution of easy examples, focusing training on hard negatives:
+\begin{equation}
+    FL(p_t) = -\alpha_t (1 - p_t)^\gamma \log(p_t)
+\end{equation}
+where $p_t$ is the estimated probability for the ground truth class, $\alpha_t$ is a class balancing factor, and $\gamma$ is the focusing parameter (typically $\gamma = 2$). This simple modification enabled one-stage detectors to match or exceed two-stage detector accuracy.
+
+\subsubsection{The YOLO Paradigm}
+
+Among one-stage detectors, the YOLO (You Only Look Once) family deserves particular attention as the focus of this thesis. YOLO fundamentally reframes detection as a regression problem, predicting bounding boxes and class probabilities directly from image pixels in a single network evaluation. The following section provides detailed coverage of YOLO's evolution.
+
+%% ============================================================================
+\section{YOLO Architecture Evolution}
+\label{sec:yolo_evolution}
+%% ============================================================================
+
+The YOLO (You Only Look Once) family of detectors has profoundly influenced real-time object detection, achieving an exceptional balance between speed and accuracy. This section traces YOLO's evolution from its 2016 introduction through the latest YOLO11 release.
+
+\subsection{YOLOv1: Unified Detection}
+
+Redmon et al.~\citep{redmon2016yolo} introduced YOLO in 2016, fundamentally reimagining object detection as a single regression problem. The core insight was that detection could be performed in one forward pass by dividing the image into a grid and having each grid cell predict bounding boxes and class probabilities simultaneously.
+
+\textbf{Architecture:} YOLOv1 employed a convolutional network inspired by GoogLeNet, with 24 convolutional layers followed by 2 fully connected layers. The network processes the input image (448×448) to produce a 7×7 grid, with each cell predicting 2 bounding boxes and 20 class probabilities (for PASCAL VOC).
+
+\textbf{Key Innovations:}
+\begin{itemize}
+    \item \textbf{Unified Architecture:} Single network predicts boxes and classes simultaneously
+    \item \textbf{Global Reasoning:} Each prediction considers the entire image context
+    \item \textbf{Real-Time Speed:} 45 FPS on standard hardware, enabling real-time applications
+\end{itemize}
+
+\textbf{Limitations:} YOLOv1 struggled with small objects (only 2 boxes per cell), closely spaced objects, and unusual aspect ratios due to its coarse grid structure.
+
+\subsection{YOLOv2 (YOLO9000): Better, Faster, Stronger}
+
+Redmon and Farhadi~\citep{redmon2017yolo9000} introduced YOLOv2 with substantial improvements in accuracy and speed, along with YOLO9000---a model capable of detecting over 9,000 object categories through joint training on detection and classification datasets.
+
+\textbf{Key Innovations:}
+\begin{itemize}
+    \item \textbf{Batch Normalization:} Added to all convolutional layers, improving regularization and convergence
+    \item \textbf{High-Resolution Classifier:} Pretraining at 448×448 before detection fine-tuning
+    \item \textbf{Anchor Boxes:} K-means clustering on training data to determine optimal anchor box dimensions
+    \item \textbf{Darknet-19:} New backbone with 19 convolutional layers and global average pooling
+    \item \textbf{Multi-Scale Training:} Random input sizes during training for scale robustness
+    \item \textbf{Passthrough Layer:} Concatenates high-resolution features with low-resolution features
+\end{itemize}
+
+YOLOv2 achieved 78.6\% mAP on PASCAL VOC 2007 at 40 FPS, significantly improving over YOLOv1's 63.4\%.
+
+\subsection{YOLOv3: Multi-Scale Predictions}
+
+Redmon and Farhadi~\citep{redmon2018yolov3} released YOLOv3 with focus on improved small object detection through multi-scale predictions.
+
+\textbf{Key Innovations:}
+\begin{itemize}
+    \item \textbf{Darknet-53:} Deeper backbone with residual connections, comprising 53 convolutional layers
+    \item \textbf{Multi-Scale Predictions:} Detection at three different scales (52×52, 26×26, 13×13 for 416×416 input)
+    \item \textbf{Independent Class Predictions:} Sigmoid activation for multi-label classification rather than softmax
+    \item \textbf{Nine Anchor Boxes:} Three boxes at each scale, totaling nine anchors
+\end{itemize}
+
+YOLOv3 achieved competitive performance with ResNet-based detectors while maintaining superior inference speed, establishing YOLO as a practical choice for real-world applications.
+
+\subsection{YOLOv4: Bag of Freebies and Specials}
+
+Bochkovskiy et al.~\citep{bochkovskiy2020yolov4} introduced YOLOv4 with extensive experimentation on training techniques and architectural modifications, categorized as ``Bag of Freebies'' (training improvements) and ``Bag of Specials'' (architectural enhancements).
+
+\textbf{Backbone Innovations:}
+\begin{itemize}
+    \item \textbf{CSPDarknet53:} Cross Stage Partial connections reducing computation while maintaining capacity
+    \item \textbf{Mish Activation:} Smooth, non-monotonic activation function $f(x) = x \cdot \tanh(\ln(1 + e^x))$
+    \item \textbf{Dropblock Regularization:} Structured dropout for convolutional layers
+\end{itemize}
+
+\textbf{Neck Innovations:}
+\begin{itemize}
+    \item \textbf{SPP (Spatial Pyramid Pooling):} Multi-scale feature aggregation through parallel pooling at different scales
+    \item \textbf{PANet (Path Aggregation Network):} Enhanced feature pyramid with bottom-up path augmentation
+\end{itemize}
+
+\textbf{Training Innovations:}
+\begin{itemize}
+    \item \textbf{Mosaic Augmentation:} Combining four training images, improving small object detection
+    \item \textbf{Self-Adversarial Training:} Perturbing images to create challenging examples
+    \item \textbf{CIoU Loss:} Complete IoU loss considering overlap, distance, and aspect ratio
+\end{itemize}
+
+YOLOv4 achieved 43.5\% AP on MS COCO at 65 FPS on Tesla V100, establishing new state-of-the-art for real-time detection.
+
+\subsection{YOLOv5: Ultralytics Implementation}
+
+Although not published as a formal research paper, YOLOv5 by Ultralytics~\citep{ultralytics2020yolov5} became widely adopted due to its PyTorch implementation, ease of use, and active maintenance.
+
+\textbf{Key Features:}
+\begin{itemize}
+    \item \textbf{PyTorch Native:} Clean, well-documented PyTorch implementation
+    \item \textbf{Auto-Anchor:} Automatic anchor box optimization for custom datasets
+    \item \textbf{Focus Layer:} Space-to-depth transformation reducing computation in early layers
+    \item \textbf{Multiple Model Sizes:} n, s, m, l, x variants for different speed-accuracy trade-offs
+    \item \textbf{Comprehensive Tooling:} Training, validation, inference, export, and deployment pipelines
+\end{itemize}
+
+\subsection{YOLOv6: Industrial Applications}
+
+Li et al.~\citep{li2022yolov6} from Meituan developed YOLOv6 targeting industrial deployment with efficient reparameterizable backbones.
+
+\textbf{Key Innovations:}
+\begin{itemize}
+    \item \textbf{RepVGG Backbone:} Reparameterizable architecture enabling training-time complexity with inference-time efficiency
+    \item \textbf{Efficient Decoupled Head:} Separate classification and localization branches
+    \item \textbf{SimOTA Label Assignment:} Simplified optimal transport assignment for positive sample selection
+\end{itemize}
+
+\subsection{YOLOv7: Trainable Bag-of-Freebies}
+
+Wang et al.~\citep{wang2023yolov7} introduced YOLOv7 with architectural innovations focusing on efficient layer aggregation and model scaling.
+
+\textbf{Key Innovations:}
+\begin{itemize}
+    \item \textbf{E-ELAN (Extended Efficient Layer Aggregation Network):} Enhanced feature aggregation without destroying gradient paths
+    \item \textbf{Model Scaling:} Compound scaling of depth and width while maintaining optimal structure
+    \item \textbf{Planned Re-parameterized Convolution:} Reparameterization strategies preserving feature richness
+    \item \textbf{Coarse-to-Fine Lead Head:} Auxiliary heads during training for improved supervision
+\end{itemize}
+
+YOLOv7 achieved 56.8\% AP on MS COCO at 161 FPS (V100), demonstrating continued improvements in the speed-accuracy frontier.
+
+\subsection{YOLOv8: Anchor-Free Detection}
+
+Ultralytics~\citep{ultralytics2023yolov8} released YOLOv8 as the successor to YOLOv5, incorporating lessons from YOLOv6, YOLOv7, and YOLOX.
+
+\textbf{Key Innovations:}
+\begin{itemize}
+    \item \textbf{Anchor-Free Detection:} Eliminates anchor boxes, directly predicting object centers
+    \item \textbf{Decoupled Head:} Separate branches for objectness, classification, and regression
+    \item \textbf{Distribution Focal Loss (DFL):} Predicting bounding box distributions rather than fixed offsets
+    \item \textbf{Mosaic Augmentation Enhancement:} Improved mosaic strategies with close\_mosaic parameter
+    \item \textbf{Unified API:} Single codebase for detection, segmentation, classification, and pose estimation
+\end{itemize}
+
+\subsection{YOLOv9: Programmable Gradient Information}
+
+Wang and Liao~\citep{wang2024yolov9} introduced YOLOv9 with novel architectural concepts for preserving gradient information.
+
+\textbf{Key Innovations:}
+\begin{itemize}
+    \item \textbf{Programmable Gradient Information (PGI):} Architecture enabling network to ``program'' which information to propagate
+    \item \textbf{GELAN (Generalized Efficient Layer Aggregation Network):} Flexible aggregation supporting diverse computational blocks
+    \item \textbf{Reversible Functions:} Preserving information across network depth
+\end{itemize}
+
+\subsection{YOLOv10: NMS-Free Detection}
+
+Wang et al.~\citep{wang2024yolov10} from Tsinghua University introduced YOLOv10 focusing on end-to-end detection efficiency.
+
+\textbf{Key Innovations:}
+\begin{itemize}
+    \item \textbf{NMS-Free Training:} Consistent dual assignments eliminating post-processing Non-Maximum Suppression
+    \item \textbf{Efficiency-Accuracy Driven Design:} Holistic optimization of all components
+    \item \textbf{Large-Kernel Convolutions:} Expanded receptive fields in certain layers
+    \item \textbf{Partial Self-Attention:} Selective attention in higher-resolution stages
+\end{itemize}
+
+\subsection{YOLO11: Latest Ultralytics Release}
+
+Ultralytics~\citep{ultralytics2024yolo11} released YOLO11 in late 2024, representing the current state-of-the-art in the YOLO family.
+
+\textbf{Key Innovations:}
+\begin{itemize}
+    \item \textbf{C3k2 Blocks:} Refined Cross Stage Partial blocks with two 3×3 convolutions for efficient feature extraction
+    \item \textbf{C2PSA (Cross Stage Partial with Spatial Attention):} Integration of spatial attention mechanisms into feature aggregation
+    \item \textbf{SPPF (Spatial Pyramid Pooling Fast):} Efficient multi-scale feature pooling with sequential max pooling
+    \item \textbf{Improved Anchor-Free Detection:} Refined center-based prediction with DFL
+    \item \textbf{Enhanced Training Strategies:} Improved augmentation pipelines and learning rate schedules
+\end{itemize}
+
+Table~\ref{tab:yolo_evolution} summarizes the evolution of YOLO architectures.
+
+\begin{table}[!ht]
+\centering
+\caption{Summary of YOLO architecture evolution}
+\label{tab:yolo_evolution}
+\begin{tabular}{llll}
+\toprule
+\textbf{Version} & \textbf{Year} & \textbf{Key Innovation} & \textbf{Reference} \\
+\midrule
+YOLOv1 & 2016 & Unified real-time detection & \citet{redmon2016yolo} \\
+YOLOv2 & 2017 & Batch norm, anchor boxes & \citet{redmon2017yolo9000} \\
+YOLOv3 & 2018 & Multi-scale predictions & \citet{redmon2018yolov3} \\
+YOLOv4 & 2020 & CSPDarknet, mosaic, PANet & \citet{bochkovskiy2020yolov4} \\
+YOLOv5 & 2020 & PyTorch, Focus layer & \citet{ultralytics2020yolov5} \\
+YOLOv6 & 2022 & RepVGG backbone & \citet{li2022yolov6} \\
+YOLOv7 & 2023 & E-ELAN, compound scaling & \citet{wang2023yolov7} \\
+YOLOv8 & 2023 & Anchor-free, decoupled head & \citet{ultralytics2023yolov8} \\
+YOLOv9 & 2024 & PGI, GELAN & \citet{wang2024yolov9} \\
+YOLOv10 & 2024 & NMS-free detection & \citet{wang2024yolov10} \\
+YOLO11 & 2024 & C3k2, C2PSA, SPPF & \citet{ultralytics2024yolo11} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%% ============================================================================
+\section{Maritime Object Detection}
+\label{sec:maritime_detection}
+%% ============================================================================
+
+Maritime object detection presents unique challenges distinct from general-purpose detection. This section examines these challenges, existing datasets, and prior approaches to maritime surveillance.
+
+\subsection{Challenges in Maritime Environments}
+
+Prasad et al.~\citep{prasad2017video} provide a comprehensive survey of maritime video processing challenges. Key difficulties include:
+
+\subsubsection{Environmental Factors}
+\begin{itemize}
+    \item \textbf{Variable Lighting:} Maritime scenes experience dramatic lighting variations from sunrise through sunset, with midday glare, golden hour effects, and twilight conditions each presenting distinct visual characteristics
+    \item \textbf{Weather Effects:} Fog, rain, and haze reduce visibility and contrast; sea state (calm to rough) affects water appearance and can obscure vessel hulls
+    \item \textbf{Reflections and Glare:} Water surface reflections create bright spots and can obscure vessels or generate false patterns
+    \item \textbf{Atmospheric Effects:} Haze increases with distance, reducing contrast for far vessels
+\end{itemize}
+
+\subsubsection{Object-Specific Challenges}
+\begin{itemize}
+    \item \textbf{Scale Variation:} Vessels range from small fishing boats to large container ships, and distance from camera creates enormous apparent size differences (e.g., 20m to 2km)
+    \item \textbf{Vessel Diversity:} Commercial ships, tankers, ferries, fishing boats, yachts, military vessels, and coast guard boats all require detection despite visual differences
+    \item \textbf{Orientation Variation:} Vessels present different appearances when viewed from bow, stern, or side
+    \item \textbf{Occlusion:} Vessels may partially occlude each other in crowded waters
+    \item \textbf{Wake and Foam:} Vessel wakes create distinctive but variable patterns that may aid or confuse detection
+\end{itemize}
+
+\subsubsection{Background Complexity}
+\begin{itemize}
+    \item \textbf{Shore Structures:} Buildings, piers, docks, and cranes near shorelines may resemble vessel structures
+    \item \textbf{Bridge Infrastructure:} Bridge towers and supports can generate false positives
+    \item \textbf{Water Texture:} Wave patterns and water surface variations create complex backgrounds
+    \item \textbf{Horizon Line:} The boundary between sea and sky varies with conditions
+\end{itemize}
+
+\subsection{Maritime Detection Datasets}
+
+Several datasets have been developed for maritime object detection research:
+
+\subsubsection{SeaShips Dataset}
+Shao et al.~\citep{shao2018seaships} introduced the SeaShips dataset, comprising 31,455 images with 40,077 vessel instances across 6 categories (ore carrier, bulk cargo carrier, general cargo ship, container ship, passenger ship, and fishing boat). The dataset was captured from coastal surveillance cameras and provides precise bounding box annotations.
+
+\subsubsection{Singapore Maritime Dataset (SMD)}
+The Singapore Maritime Dataset~\citep{prasad2017video} contains over 81,000 frames from onshore and onboard cameras in Singapore waters. It includes annotations for 4 categories: ferry, buoy, vessel, and kayak. The dataset emphasizes near-shore vessel detection with challenging lighting and weather variations.
+
+\subsubsection{ABOShips Dataset}
+The ABOShips dataset from Åbo Akademi University contains approximately 9,880 images from the Baltic Sea region with 9 vessel categories. It captures the distinct vessel types and conditions of Northern European waters.
+
+\subsubsection{Bosphorus Dataset}
+The bogaz\_v\_1 dataset~\citep{roboflow2024bogaz} used in this thesis contains 859 images from the Bosphorus Strait with 4,859 vessel instances. While smaller than other datasets, it specifically captures the unique characteristics of Bosphorus maritime traffic, including distinctive vessel types, shore structures, and lighting conditions.
+
+Table~\ref{tab:maritime_datasets} compares these maritime detection datasets.
+
+\begin{table}[!ht]
+\centering
+\caption{Comparison of maritime detection datasets}
+\label{tab:maritime_datasets}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Dataset} & \textbf{Images} & \textbf{Instances} & \textbf{Classes} & \textbf{Region} \\
+\midrule
+SeaShips & 31,455 & 40,077 & 6 & China coast \\
+SMD & 81,000+ & N/A & 4 & Singapore \\
+ABOShips & 9,880 & N/A & 9 & Baltic Sea \\
+Bosphorus & 859 & 4,859 & 1 & Bosphorus Strait \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Prior Maritime Detection Approaches}
+
+Maritime detection has traditionally relied on multiple sensor modalities:
+
+\subsubsection{Radar-Based Detection}
+Maritime radar systems detect vessels through electromagnetic reflection, providing range and bearing information regardless of lighting conditions. However, radar struggles with small vessels, has limited classification capability, and cannot provide visual verification.
+
+\subsubsection{AIS-Based Tracking}
+The Automatic Identification System (AIS) requires vessels to broadcast identification, position, and navigation data. While effective for cooperative vessels, AIS has limitations:
+\begin{itemize}
+    \item Small vessels may not carry AIS transponders
+    \item Non-cooperative vessels may disable or spoof AIS
+    \item AIS provides no visual confirmation
+\end{itemize}
+
+\subsubsection{Camera-Based Detection}
+Camera-based detection using deep learning has emerged as a complement to radar and AIS:
+\begin{itemize}
+    \item Provides visual verification of vessel presence
+    \item Can detect non-cooperative vessels
+    \item Enables vessel classification from visual features
+    \item Supports surveillance in areas with radar limitations
+\end{itemize}
+
+\subsubsection{Deep Learning for Maritime Detection}
+Recent work has applied CNN-based detectors to maritime imagery. Kanjir et al.~\citep{kanjir2018vessel} survey vessel detection from satellite imagery, while shore-based detection typically employs architectures from the YOLO, Faster R-CNN, or SSD families. Key findings from prior work include:
+\begin{itemize}
+    \item Domain-specific training significantly outperforms general pretrained models
+    \item Multi-scale detection is essential for handling vessel size variation
+    \item Data augmentation helps with limited maritime training data
+    \item False positives from shore structures remain a challenge
+\end{itemize}
+
+%% ============================================================================
+\section{Transfer Learning for Domain Adaptation}
+\label{sec:transfer_learning}
+%% ============================================================================
+
+Transfer learning enables models trained on large source datasets to adapt efficiently to target domains with limited data. This section examines transfer learning principles relevant to maritime detection.
+
+\subsection{Transfer Learning Theory}
+
+Pan and Yang~\citep{pan2010survey} provide the foundational survey on transfer learning. The key insight is that knowledge learned from solving one task can be transferred to improve learning on a related but different task.
+
+\subsubsection{Problem Formulation}
+Given a source domain $\mathcal{D}_S$ with learning task $\mathcal{T}_S$ and a target domain $\mathcal{D}_T$ with learning task $\mathcal{T}_T$, transfer learning aims to improve the learning of the target predictive function $f_T(\cdot)$ using knowledge from $\mathcal{D}_S$ and $\mathcal{T}_S$, where $\mathcal{D}_S \neq \mathcal{D}_T$ or $\mathcal{T}_S \neq \mathcal{T}_T$.
+
+\subsubsection{Types of Transfer Learning}
+\begin{itemize}
+    \item \textbf{Inductive Transfer:} Source and target tasks differ; labeled data in target domain
+    \item \textbf{Transductive Transfer:} Tasks are the same; domains differ (domain adaptation)
+    \item \textbf{Unsupervised Transfer:} No labeled data in source or target domains
+\end{itemize}
+
+For object detection, domain adaptation (transductive transfer) is most relevant, as the task (detection) remains the same but the domain (COCO $\rightarrow$ Bosphorus) differs.
+
+\subsection{Transfer Learning in Object Detection}
+
+Weiss et al.~\citep{weiss2016survey} extend the transfer learning survey to deep learning contexts. For object detection, transfer learning typically involves:
+
+\subsubsection{Pretrained Backbones}
+Detection networks use backbones (ResNet, Darknet, CSPDarknet) pretrained on large classification datasets (ImageNet~\citep{deng2009imagenet}) or detection datasets (COCO~\citep{lin2014coco}). Pretrained weights provide:
+\begin{itemize}
+    \item Effective low-level feature extractors (edges, textures, shapes)
+    \item Mid-level semantic features (object parts, patterns)
+    \item Initialization that avoids poor local minima
+\end{itemize}
+
+\subsubsection{Fine-Tuning Strategies}
+Common fine-tuning approaches include:
+\begin{itemize}
+    \item \textbf{Full Fine-Tuning:} Update all network weights with reduced learning rate
+    \item \textbf{Feature Extraction:} Freeze backbone, only train detection head
+    \item \textbf{Gradual Unfreezing:} Progressively unfreeze layers from head to backbone
+    \item \textbf{Discriminative Learning Rates:} Lower learning rates for early layers, higher for later layers
+\end{itemize}
+
+\subsubsection{Head Replacement}
+When target domain has different classes than source, the classification head must be replaced:
+\begin{itemize}
+    \item COCO: 80 classes including ``boat''
+    \item Bosphorus: 1 class (``gemiler''/ships)
+\end{itemize}
+The new head is randomly initialized while backbone weights are transferred.
+
+\subsection{Domain Gap in Maritime Detection}
+
+The domain gap between COCO and Bosphorus imagery manifests in multiple dimensions:
+
+\subsubsection{Semantic Gap}
+COCO ``boat'' predominantly features recreational vessels (sailboats, kayaks, motorboats) in varied contexts (lakes, rivers, marinas). Bosphorus traffic comprises commercial vessels (cargo ships, tankers, ferries) in a consistent maritime corridor context.
+
+\subsubsection{Visual Gap}
+\begin{itemize}
+    \item \textbf{Scale:} COCO boats typically appear large in frame; Bosphorus vessels range from close to very distant
+    \item \textbf{Background:} COCO has diverse backgrounds; Bosphorus has consistent maritime/urban backdrop
+    \item \textbf{Lighting:} Bosphorus-specific lighting conditions differ from COCO's variety
+\end{itemize}
+
+\subsubsection{Quantifying Domain Gap}
+This thesis quantifies the domain gap by comparing vanilla COCO-pretrained models (1--11\% recall) against fine-tuned models (87.54\% recall). This 8$\times$ improvement demonstrates the severity of the domain gap and the necessity of domain adaptation.
+
+\subsection{When Transfer Learning Helps}
+
+Transfer learning effectiveness depends on source-target similarity:
+\begin{itemize}
+    \item \textbf{Positive Transfer:} Source knowledge improves target performance (COCO $\rightarrow$ Bosphorus with fine-tuning)
+    \item \textbf{Negative Transfer:} Source knowledge degrades target performance (rare with appropriate fine-tuning)
+    \item \textbf{No Transfer:} Source provides no benefit (training from scratch)
+\end{itemize}
+
+For Bosphorus maritime detection, COCO pretraining provides positive transfer through:
+\begin{itemize}
+    \item General object detection features (edges, shapes, textures)
+    \item Boat-like feature representations (despite semantic differences)
+    \item Optimized network architecture and training recipes
+\end{itemize}
+
+However, direct application without fine-tuning results in near-complete failure, demonstrating that pretraining alone is insufficient for domain-specific deployment.
+
+%% ============================================================================
+\section{Summary}
+\label{sec:literature_summary}
+%% ============================================================================
+
+This chapter has reviewed the literature foundational to maritime vessel detection using deep learning:
+
+\begin{enumerate}
+    \item \textbf{Object Detection Evolution:} From traditional HOG/DPM methods through two-stage detectors (R-CNN family) to one-stage detectors (SSD, RetinaNet, YOLO), achieving real-time performance with high accuracy.
+    
+    \item \textbf{YOLO Architecture Evolution:} From YOLOv1's unified detection paradigm through eleven major versions, each introducing architectural and training innovations that advance the speed-accuracy frontier.
+    
+    \item \textbf{Maritime Detection Challenges:} Unique challenges including environmental factors, vessel diversity, scale variation, and background complexity that distinguish maritime detection from general object detection.
+    
+    \item \textbf{Transfer Learning:} Principles enabling efficient domain adaptation from large-scale pretraining to specialized deployment domains, essential for maritime applications with limited training data.
+\end{enumerate}
+
+The literature establishes that while YOLO detectors achieve excellent general object detection performance, domain-specific adaptation is essential for specialized applications like Bosphorus maritime surveillance. The following chapters detail our methodology for fine-tuning YOLO11s and present comprehensive experimental results quantifying the improvement achieved.

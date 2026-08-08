@@ -1,0 +1,193 @@
+%% Chapter 1: Introduction
+%% Target: 6-8 pages
+
+\chapter{Introduction}
+\label{ch:introduction}
+
+%% ============================================================================
+\section{Background and Motivation}
+\label{sec:background}
+%% ============================================================================
+
+The Bosphorus Strait, known in Turkish as \textit{İstanbul Boğazı}, stands as one of the world's most strategically vital and geographically challenging maritime corridors. This narrow waterway connects the Black Sea to the Sea of Marmara and, through the Dardanelles, to the Aegean and Mediterranean Seas. With a length of approximately 31 kilometers (19 miles) and a minimum width of merely 700 meters at its narrowest point near Rumelihisarı, the Bosphorus presents a unique combination of high traffic density, complex geography, and critical infrastructure that demands sophisticated surveillance systems \citep{turkishstraits2023}.
+
+\subsection{Strategic Importance of the Bosphorus}
+
+The Bosphorus Strait serves as the sole maritime connection between the Black Sea and the world's oceans, making it indispensable for international trade. Countries bordering the Black Sea---including Russia, Ukraine, Romania, Bulgaria, and Georgia---depend entirely on this passage for their maritime commerce with the global market. The strategic significance extends beyond commercial interests to encompass energy security, as the strait serves as a major conduit for oil and natural gas exports from the Caspian and Black Sea regions to European and global markets.
+
+Historical records and contemporary statistics underscore the strait's importance:
+\begin{itemize}
+    \item Over 40,000 vessels transit the Bosphorus annually, making it one of the busiest waterways globally
+    \item Approximately 3 million barrels of oil pass through daily, representing a significant portion of global energy transport
+    \item The strait hosts over 2,500 daily local ferry crossings, connecting the European and Asian sides of Istanbul
+    \item Commercial vessel traffic includes cargo ships, oil tankers, chemical carriers, passenger vessels, and fishing boats
+\end{itemize}
+
+\subsection{Maritime Traffic Management Challenges}
+
+The unique geography of the Bosphorus creates exceptional challenges for maritime traffic management. The strait features 12 sharp turns along its 31-kilometer length, with some requiring course changes of up to 80 degrees. These navigational constraints, combined with strong and variable currents (up to 7-8 knots during certain conditions), crosswinds from the adjacent landmasses, and the presence of two intercontinental suspension bridges, create a demanding environment for vessel navigation.
+
+The Turkish Straits Vessel Traffic Service (VTS), operated by the Directorate General of Coastal Safety, employs radar systems, Automatic Identification System (AIS) receivers, and shore-based visual monitoring to manage traffic flow. However, traditional surveillance methods face several limitations:
+
+\begin{enumerate}
+    \item \textbf{Operator Fatigue:} Human operators monitoring camera feeds experience attention degradation over extended periods, potentially missing critical events
+    \item \textbf{Scalability Constraints:} The number of camera feeds that human operators can effectively monitor simultaneously is inherently limited
+    \item \textbf{Response Latency:} Manual identification and classification of vessels introduces delays in decision-making processes
+    \item \textbf{AIS Limitations:} Smaller vessels and non-cooperative targets may not transmit AIS signals, creating blind spots in the surveillance picture
+    \item \textbf{Adverse Conditions:} Low visibility conditions (fog, rain, night) challenge traditional visual monitoring
+\end{enumerate}
+
+\subsection{The Promise of Automated Visual Detection}
+
+Computer vision and deep learning technologies offer a compelling solution to these challenges. Automated vessel detection systems can:
+\begin{itemize}
+    \item Continuously monitor multiple camera feeds without fatigue
+    \item Provide real-time detection and alerting capabilities
+    \item Complement radar and AIS systems with visual verification
+    \item Detect non-cooperative vessels lacking AIS transponders
+    \item Generate structured data for traffic analysis and pattern recognition
+\end{itemize}
+
+The YOLO (You Only Look Once) family of object detectors has emerged as the leading approach for real-time visual detection, offering an attractive balance between accuracy and speed suitable for maritime surveillance applications \citep{redmon2016yolo, ultralytics2024yolo11}. However, as this thesis demonstrates, the direct application of general-purpose pretrained models to specialized maritime environments yields inadequate results, necessitating domain-specific adaptation.
+
+%% ============================================================================
+\section{Problem Statement}
+\label{sec:problem}
+%% ============================================================================
+
+Despite the availability of sophisticated object detection models pretrained on large-scale datasets, their direct application to maritime vessel detection in the Bosphorus Strait presents fundamental challenges that motivate this research.
+
+\subsection{The Domain Gap Problem}
+
+Modern object detection models, including the YOLO family, are typically pretrained on the Microsoft COCO (Common Objects in Context) dataset \citep{lin2014coco}, which contains 80 object categories including a ``boat'' class. This pretraining provides models with general visual features and detection capabilities. However, the COCO ``boat'' class predominantly features:
+\begin{itemize}
+    \item Recreational vessels (sailboats, kayaks, motorboats, canoes)
+    \item Varied contexts (lakes, rivers, marinas, oceans)
+    \item Diverse backgrounds (docks, beaches, open water)
+    \item Typically close-range imagery with large relative object sizes
+\end{itemize}
+
+In contrast, Bosphorus maritime imagery presents fundamentally different characteristics:
+\begin{itemize}
+    \item Commercial vessels (cargo ships, oil tankers, container ships, ferries)
+    \item Consistent maritime corridor context with urban shorelines
+    \item Bridge infrastructure (Bosphorus Bridge, Fatih Sultan Mehmet Bridge, Yavuz Sultan Selim Bridge)
+    \item Wide range of scales from nearby ferries to distant cargo ships (20 meters to 2 kilometers from camera)
+    \item Distinctive lighting conditions unique to the strait's geography
+\end{itemize}
+
+This semantic and visual gap between the training domain (COCO) and the deployment domain (Bosphorus) severely degrades detection performance. As demonstrated in this thesis, this ``domain gap'' results in vanilla COCO-pretrained models achieving only 1--11\% recall on Bosphorus test imagery---effectively failing to detect 89--99\% of vessels.
+
+\subsection{Quantifying the Performance Gap}
+
+Preliminary experiments reveal the severity of this performance degradation:
+
+\begin{quote}
+\textit{COCO-pretrained YOLO models achieve only 1--11\% recall on Bosphorus maritime imagery, missing the vast majority of vessels despite including a ``boat'' class in their training data. This represents a catastrophic failure mode for safety-critical maritime surveillance applications.}
+\end{quote}
+
+The performance gap manifests in multiple failure modes:
+\begin{enumerate}
+    \item \textbf{False Negatives (Missed Vessels):} The dominant failure mode, where vessels present in the scene are not detected
+    \item \textbf{False Positives (Phantom Detections):} Shore structures, bridges, and other background elements misclassified as vessels
+    \item \textbf{Poor Localization:} When detection occurs, bounding boxes often poorly align with actual vessel boundaries
+\end{enumerate}
+
+\subsection{The Need for Domain-Specific Adaptation}
+
+The fundamental insight motivating this research is that domain-specific fine-tuning is \textit{essential}, not optional, for effective maritime vessel detection. Transfer learning---leveraging pretrained weights while adapting to the target domain---offers a practical path forward that combines:
+\begin{itemize}
+    \item The feature extraction capabilities learned from large-scale pretraining
+    \item Domain-specific knowledge acquired from targeted fine-tuning
+    \item Practical data requirements achievable with limited annotation effort
+\end{itemize}
+
+This thesis systematically quantifies the performance improvement achievable through domain-specific fine-tuning and analyzes the factors contributing to this improvement.
+
+%% ============================================================================
+\section{Research Objectives}
+\label{sec:objectives}
+%% ============================================================================
+
+This thesis addresses the challenge of maritime vessel detection in the Bosphorus Strait through the following research objectives:
+
+\begin{enumerate}
+    \item \textbf{Evaluate Baseline Performance:} Systematically assess the detection performance of vanilla COCO-pretrained YOLO models (YOLOv8n, YOLOv8s, YOLO11n, YOLO11s) on Bosphorus maritime imagery to establish baseline performance and quantify the domain gap.
+    
+    \item \textbf{Develop Fine-tuned Model:} Design and implement a domain-specific fine-tuned YOLO11s model optimized for Bosphorus vessel detection, incorporating appropriate training strategies, hyperparameter selection, and input resolution optimization.
+    
+    \item \textbf{Quantify Improvement:} Measure the performance improvement achieved through fine-tuning across multiple metrics including precision, recall, F1 score, IoU accuracy, and inference speed.
+    
+    \item \textbf{Analyze Detection Quality:} Evaluate not only detection rate but also localization accuracy, examining how well detected bounding boxes align with actual vessel boundaries.
+    
+    \item \textbf{Conduct Ablation Studies:} Investigate the contribution of key factors including input resolution, confidence thresholds, and training data size to overall detection performance.
+    
+    \item \textbf{Characterize Failure Modes:} Analyze false positives and false negatives to understand the remaining limitations and guide future improvements.
+\end{enumerate}
+
+%% ============================================================================
+\section{Research Questions}
+\label{sec:research_questions}
+%% ============================================================================
+
+This thesis addresses the following research questions:
+
+\begin{description}
+    \item[RQ1:] \textit{How significant is the performance gap between COCO-pretrained YOLO models and domain-specific fine-tuned models for Bosphorus vessel detection?}
+    
+    This question examines the quantitative difference in detection performance, measured by precision, recall, and F1 score, between off-the-shelf pretrained models and our fine-tuned approach.
+    
+    \item[RQ2:] \textit{What detection quality, measured by localization accuracy (IoU) and inference speed, can be achieved through domain-specific fine-tuning?}
+    
+    Beyond detection rate, this question investigates the quality of detections in terms of how precisely bounding boxes localize vessels and whether real-time processing requirements can be satisfied.
+    
+    \item[RQ3:] \textit{What are the primary failure modes and remaining limitations of the fine-tuned detection system?}
+    
+    This question explores the types of errors (false positives and false negatives) that persist after fine-tuning, categorizing their sources and identifying opportunities for future improvement.
+    
+    \item[RQ4:] \textit{How do key hyperparameters---specifically input resolution and confidence threshold---affect the precision-recall trade-off?}
+    
+    This question investigates the sensitivity of detection performance to configurable parameters, providing guidance for deployment in different operational contexts.
+\end{description}
+
+%% ============================================================================
+\section{Contributions}
+\label{sec:contributions}
+%% ============================================================================
+
+This thesis makes the following contributions to the field of maritime object detection:
+
+\begin{enumerate}
+    \item \textbf{First Systematic Bosphorus Evaluation:} We present the first documented systematic evaluation of YOLO11 models for vessel detection specifically in the Bosphorus Strait, demonstrating that vanilla COCO-pretrained models achieve only 1--11\% recall---a previously unquantified performance gap.
+    
+    \item \textbf{High-Performance Fine-tuned Model:} We develop a fine-tuned YOLO11s model achieving 87.54\% recall with 80.06\% precision (F1=0.836), representing an 8$\times$ improvement over vanilla models. This transforms an essentially non-functional detection system into a production-ready solution.
+    
+    \item \textbf{Comprehensive Comparative Analysis:} We provide rigorous comparison of five model configurations (four vanilla, one fine-tuned) on a standardized test set of 60 images containing 321 vessel instances, with consistent evaluation methodology enabling fair comparison.
+    
+    \item \textbf{Ablation Studies:} We conduct systematic ablation experiments examining the impact of input resolution, confidence thresholds, and training data size on detection performance, providing insights transferable to other domain-specific detection tasks.
+    
+    \item \textbf{Error Analysis Framework:} We develop a comprehensive error analysis categorizing false positives (shore structures, overlapping vessels, wake patterns) and false negatives (distant vessels, occlusion, unusual vessel types), identifying specific failure modes and their relative frequencies.
+    
+    \item \textbf{Reproducible Methodology:} We document our evaluation framework, including data splits (seed=42), matching algorithms, and metric calculations, supporting reproducible maritime detection research.
+\end{enumerate}
+
+%% ============================================================================
+\section{Thesis Organization}
+\label{sec:organization}
+%% ============================================================================
+
+The remainder of this thesis is organized as follows:
+
+\textbf{Chapter~\ref{ch:literature_review}: Literature Review} provides comprehensive coverage of related work, including the evolution of YOLO object detectors from YOLOv1 through YOLO11, maritime object detection challenges and existing approaches, and transfer learning principles for domain adaptation.
+
+\textbf{Chapter~\ref{ch:theoretical_background}: Theoretical Background} establishes the theoretical foundations underlying this research, including convolutional neural network fundamentals, detailed YOLO11 architecture analysis, loss functions for object detection, and evaluation metrics.
+
+\textbf{Chapter~\ref{ch:methodology}: Dataset and Methodology} describes the Bosphorus maritime dataset, data preprocessing and augmentation strategies, model training configuration, and the evaluation framework used for comparative analysis.
+
+\textbf{Chapter~\ref{ch:experiments}: Experiments and Results} presents the experimental findings, including main comparison results, ablation studies on resolution and confidence thresholds, and detailed error analysis of false positives and false negatives.
+
+\textbf{Chapter~\ref{ch:discussion}: Discussion} interprets the experimental results, explaining why fine-tuning provides dramatic improvement, analyzing practical implications for maritime surveillance, and acknowledging limitations of the current approach.
+
+\textbf{Chapter~\ref{ch:conclusion}: Conclusion and Future Work} summarizes the thesis contributions, key findings, and outlines directions for future research including multi-class classification, night-time detection, and geographic generalization.
+
+\textbf{Appendices} provide supplementary material including dataset sample images, complete training logs, evaluation code, and per-image detection results.
